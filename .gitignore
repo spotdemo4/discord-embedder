@@ -1,0 +1,5 @@
+.direnv
+.env
+/tmp
+/result
+dist/
