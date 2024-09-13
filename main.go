@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -27,6 +29,18 @@ var commands = []*discordgo.ApplicationCommand{
 				Type:        discordgo.ApplicationCommandOptionString,
 				Required:    true,
 			},
+			{
+				Name:        "start",
+				Description: "Start time of the video in 00:00 format (e.g. 01:30)",
+				Type:        discordgo.ApplicationCommandOptionString,
+				Required:    false,
+			},
+			{
+				Name:        "end",
+				Description: "End time of the video in 00:00 format (e.g. 02:00)",
+				Type:        discordgo.ApplicationCommandOptionString,
+				Required:    false,
+			},
 		},
 	},
 }
@@ -45,6 +59,14 @@ func main() {
 	// Check if ffprobe is installed
 	if _, err := exec.LookPath("ffprobe"); err != nil {
 		log.Fatalf("ffprobe is not installed")
+	}
+
+	// Check if cookies directory exists
+	if _, err := os.Stat("cookies"); os.IsNotExist(err) {
+		// Create cookies directory
+		if err := os.Mkdir("cookies", 0755); err != nil {
+			log.Fatalf("could not create cookies directory: %s", err)
+		}
 	}
 
 	// Read in environment variables
@@ -76,6 +98,49 @@ func main() {
 		}
 	})
 
+	// Add direct message handler
+	session.AddHandler(func(s *discordgo.Session, i *discordgo.MessageCreate) {
+		if i.Author.ID == s.State.User.ID {
+			return
+		}
+
+		if i.Attachments == nil {
+			return
+		}
+
+		for _, attachment := range i.Attachments {
+			if filepath.Ext(attachment.Filename) != ".txt" {
+				continue
+			}
+
+			// Save cookie file to cookies directory
+			resp, err := s.Client.Get(attachment.URL)
+			if err != nil {
+				log.Printf("could not get cookie file: %s", err)
+				return
+			}
+
+			file, err := os.Create(filepath.Join("cookies", attachment.Filename))
+			if err != nil {
+				log.Printf("could not create cookie file: %s", err)
+				return
+			}
+
+			if _, err := bufio.NewReader(resp.Body).WriteTo(file); err != nil {
+				log.Printf("could not write cookie file: %s", err)
+				return
+			}
+
+			resp.Body.Close()
+			file.Close()
+
+			// Send response message
+			if _, err := s.ChannelMessageSend(i.ChannelID, "Cookie file saved!"); err != nil {
+				log.Printf("could not send message: %s", err)
+			}
+		}
+	})
+
 	// Add ready handler
 	session.AddHandler(func(s *discordgo.Session, r *discordgo.Ready) {
 		log.Printf("Logged in as %s", r.User.String())
@@ -97,6 +162,8 @@ func main() {
 			log.Printf("could not register commands for guild %s: %s", e.Guild.ID, err)
 		}
 	})
+
+	session.Identify.Intents = discordgo.IntentsDirectMessages
 
 	// Open the websocket connection to Discord and begin listening.
 	err = session.Open()
@@ -200,9 +267,22 @@ func handleEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, opts opti
 		log.Printf("could not respond to interaction: %s", err)
 	}
 
+	// Get URL
+	URL, err := url.Parse(opts["url"].StringValue())
+	if err != nil {
+		resp := fmt.Sprintf("could not parse url: %s", err)
+		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			Content: &resp,
+		}); err != nil {
+			log.Printf("could not respond to interaction: %s", err)
+		}
+
+		return
+	}
+
 	video := &video{
 		Name: hex.EncodeToString([]byte(opts["url"].StringValue())),
-		Url:  opts["url"].StringValue(),
+		Url:  URL,
 	}
 
 	// Download video
@@ -222,6 +302,21 @@ func handleEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, opts opti
 			log.Printf("could not delete video: %s", err)
 		}
 	}()
+
+	// Trim video if start and end times are provided
+	if opts["start"] != nil && opts["end"] != nil {
+		log.Printf("trimming video: %s", video.File.Name())
+		if err := video.trim(opts["start"].StringValue(), opts["end"].StringValue()); err != nil {
+			resp := fmt.Sprintf("could not trim video: %s", err)
+			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+				Content: &resp,
+			}); err != nil {
+				log.Printf("could not respond to interaction: %s", err)
+			}
+
+			return
+		}
+	}
 
 	// Convert to H264
 	codec, err := video.codec()
@@ -292,13 +387,41 @@ func handleEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, opts opti
 
 type video struct {
 	Name string
-	Url  string
+	Url  *url.URL
 	File *os.File
 }
 
 // download downloads the video
 func (v *video) download() error {
-	cmd := exec.Command("yt-dlp", "-o", fmt.Sprintf("%s.%%(ext)s", v.Name), v.Url)
+	// Find domain of URL
+	domain := strings.TrimPrefix(v.Url.Hostname(), "www.")
+
+	// Check if cookie file exists for URL
+	cookieFileName := ""
+	err := filepath.Walk("cookies", func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Check if cookie file exists for domain
+		if strings.Contains(info.Name(), domain) {
+			cookieFileName = info.Name()
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	// Download video
+	var cmd *exec.Cmd
+	if cookieFileName == "" {
+		cmd = exec.Command("yt-dlp", "-o", fmt.Sprintf("%s.%%(ext)s", v.Name), v.Url.String())
+	} else {
+		log.Printf("using cookie file: %s", cookieFileName)
+		cmd = exec.Command("yt-dlp", "-o", fmt.Sprintf("%s.%%(ext)s", v.Name), "--cookies", filepath.Join("cookies", cookieFileName), v.Url.String())
+	}
 
 	if err := cmd.Run(); err != nil {
 		return err
@@ -430,6 +553,30 @@ func (v *video) compress() error {
 
 	// Set new video name
 	v.Name = fmt.Sprintf("%s-compress", v.Name)
+
+	// Find new video file
+	if err := v.find(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Trim video to start and end time
+func (v *video) trim(start string, end string) error {
+	cmd := exec.Command("ffmpeg", "-ss", start, "-to", end, "-i", v.File.Name(), fmt.Sprintf("%s-trim.mp4", v.Name))
+
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+
+	// Delete original video
+	if err := v.delete(); err != nil {
+		return err
+	}
+
+	// Set new video name
+	v.Name = fmt.Sprintf("%s-trim", v.Name)
 
 	// Find new video file
 	if err := v.find(); err != nil {

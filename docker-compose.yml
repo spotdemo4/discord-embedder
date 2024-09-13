@@ -5,5 +5,7 @@ services:
     environment:
       DISCORD_TOKEN: ${DISCORD_TOKEN}
       DISCORD_APPLICATION_ID: ${DISCORD_APPLICATION_ID}
+    volumes:
+      - ./cookies:/usr/src/discord-embedder/cookies
     container_name: discord-embedder
     restart: unless-stopped
