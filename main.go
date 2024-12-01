@@ -41,6 +41,12 @@ var commands = []*discordgo.ApplicationCommand{
 				Type:        discordgo.ApplicationCommandOptionString,
 				Required:    false,
 			},
+			{
+				Name:        "spoiler",
+				Description: "Whether to embed the video as a spoiler",
+				Type:        discordgo.ApplicationCommandOptionBoolean,
+				Required:    false,
+			},
 		},
 	},
 }
@@ -281,7 +287,7 @@ func handleEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, opts opti
 	}
 
 	video := &video{
-		Name: hex.EncodeToString([]byte(opts["url"].StringValue())),
+		Name: hex.EncodeToString([]byte(URL.Path)),
 		Url:  URL,
 	}
 
@@ -354,6 +360,14 @@ func handleEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, opts opti
 
 				return
 			}
+		}
+	}
+
+	// Add spoiler
+	if opts["spoiler"] != nil && opts["spoiler"].BoolValue() {
+		log.Printf("adding spoiler: %s", video.File.Name())
+		if err := video.spoiler(); err != nil {
+			log.Printf("Could not add spoiler: %s", err)
 		}
 	}
 
@@ -580,6 +594,25 @@ func (v *video) trim(start string, end string) error {
 
 	// Find new video file
 	if err := v.find(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Add spoiler to video
+func (v *video) spoiler() error {
+	if err := v.File.Close(); err != nil {
+		log.Printf("could not close file: %s", err)
+	}
+
+	err := os.Rename(v.File.Name(), "SPOILER_"+v.File.Name())
+	if err != nil {
+		return err
+	}
+
+	v.File, err = os.Open("SPOILER_" + v.File.Name())
+	if err != nil {
 		return err
 	}
 
