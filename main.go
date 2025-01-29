@@ -542,7 +542,7 @@ func (v *video) compress() error {
 	length = length + 1
 
 	// Compresses video to <25MB
-	targetSize := 25 * 1000 * 1000 * 8
+	targetSize := 10 * 1000 * 1000 * 8
 	totalBitrate := targetSize / length
 	audioBitrate := 128 * 1000
 	videoBitrate := totalBitrate - audioBitrate
