@@ -344,11 +344,11 @@ func handleEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, opts opti
 		}
 	}
 
-	// Compress the video if >25MB
+	// Compress the video if >10MB
 	if info, err := video.File.Stat(); err != nil {
 		log.Printf("could not get file info: %s", err)
 	} else {
-		if info.Size() > 25*1000*1000 {
+		if info.Size() > 10*1000*1000 {
 			log.Printf("compressing video: %s", video.File.Name())
 			if err := video.compress(); err != nil {
 				resp := fmt.Sprintf("could not compress video: %s", err)
@@ -383,7 +383,7 @@ func handleEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, opts opti
 		},
 	})
 	if err != nil {
-		resp := "Could not upload to Discord!"
+		resp := fmt.Sprintf("Could not upload to Discord: %s", err.Error())
 		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 			Content: &resp,
 		}); err != nil {
