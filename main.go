@@ -324,12 +324,12 @@ func handleEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, opts opti
 		}
 	}
 
-	// Convert to H264
+	// Convert to H265
 	codec, err := video.codec()
 	if err != nil {
 		log.Printf("could not get codec: %s", err)
 	} else {
-		if codec != "h264" {
+		if codec != "hevc" {
 			log.Printf("converting video: %s", video.File.Name())
 			if err := video.convert(); err != nil {
 				resp := fmt.Sprintf("could not convert video: %s", err)
@@ -502,7 +502,7 @@ func (v *video) codec() (string, error) {
 
 // convert converts the video to H264
 func (v *video) convert() error {
-	cmd := exec.Command("ffmpeg", "-i", v.File.Name(), "-c:v", "libx264", "-c:a", "aac", "-b:a", "160k", fmt.Sprintf("%s-convert.mp4", v.Name))
+	cmd := exec.Command("ffmpeg", "-i", v.File.Name(), "-c:v", "libx265", "-c:a", "aac", "-b:a", "160k", fmt.Sprintf("%s-convert.mp4", v.Name))
 
 	if err := cmd.Run(); err != nil {
 		return err
