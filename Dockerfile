@@ -1,4 +1,4 @@
-FROM golang:1.24.1-alpine
+FROM golang:alpine
 
 WORKDIR /usr/src/discord-embedder
 
