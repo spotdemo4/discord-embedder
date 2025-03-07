@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/gabriel-vasile/mimetype"
 	"github.com/spf13/viper"
 )
 
@@ -265,23 +266,28 @@ func parseOptions(options []*discordgo.ApplicationCommandInteractionDataOption) 
 	return
 }
 
+func respond(s *discordgo.Session, i *discordgo.InteractionCreate, message string) {
+	log.Printf("ERROR: %s\n", message)
+	resp := fmt.Sprintf("could not parse url: %s", message)
+	if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+		Content: &resp,
+	}); err != nil {
+		log.Printf("Could not respond to interaction: %s", err.Error())
+	}
+}
+
 func handleEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, opts optionMap) {
 	// Defer response
 	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 	}); err != nil {
-		log.Printf("could not respond to interaction: %s", err)
+		log.Printf("Could not respond to interaction: %s", err.Error())
 	}
 
 	// Get URL
 	URL, err := url.Parse(opts["url"].StringValue())
 	if err != nil {
-		resp := fmt.Sprintf("could not parse url: %s", err)
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Content: &resp,
-		}); err != nil {
-			log.Printf("could not respond to interaction: %s", err)
-		}
+		respond(s, i, fmt.Sprintf("Could not parse url: %s", err.Error()))
 
 		return
 	}
@@ -294,18 +300,13 @@ func handleEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, opts opti
 	// Download video
 	log.Printf("downloading video: %s", video.Url)
 	if err := video.download(); err != nil {
-		resp := fmt.Sprintf("could not download video: %s", err)
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Content: &resp,
-		}); err != nil {
-			log.Printf("could not respond to interaction: %s", err)
-		}
+		respond(s, i, fmt.Sprintf("Could not download video: %s", err.Error()))
 
 		return
 	}
 	defer func() {
 		if err := video.delete(); err != nil {
-			log.Printf("could not delete video: %s", err)
+			log.Printf("ERROR: Could not delete video: %s\n", err.Error())
 		}
 	}()
 
@@ -313,53 +314,35 @@ func handleEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, opts opti
 	if opts["start"] != nil && opts["end"] != nil {
 		log.Printf("trimming video: %s", video.File.Name())
 		if err := video.trim(opts["start"].StringValue(), opts["end"].StringValue()); err != nil {
-			resp := fmt.Sprintf("could not trim video: %s", err)
-			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-				Content: &resp,
-			}); err != nil {
-				log.Printf("could not respond to interaction: %s", err)
-			}
+			respond(s, i, fmt.Sprintf("Could not trim video: %s", err.Error()))
 
 			return
 		}
 	}
 
-	// Convert to H265
+	// Get video codec
 	codec, err := video.codec()
 	if err != nil {
-		log.Printf("could not get codec: %s", err)
-	} else {
-		if codec != "hevc" {
-			log.Printf("converting video: %s", video.File.Name())
-			if err := video.convert(); err != nil {
-				resp := fmt.Sprintf("could not convert video: %s", err)
-				if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-					Content: &resp,
-				}); err != nil {
-					log.Printf("could not respond to interaction: %s", err)
-				}
+		respond(s, i, fmt.Sprintf("Could not get codec: %s", err.Error()))
 
-				return
-			}
-		}
+		return
 	}
 
-	// Compress the video if >10MB
-	if info, err := video.File.Stat(); err != nil {
-		log.Printf("could not get file info: %s", err)
-	} else {
-		if info.Size() > 10*1000*1000 {
-			log.Printf("compressing video: %s", video.File.Name())
-			if err := video.compress(); err != nil {
-				resp := fmt.Sprintf("could not compress video: %s", err)
-				if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-					Content: &resp,
-				}); err != nil {
-					log.Printf("could not respond to interaction: %s", err)
-				}
+	// Get video size
+	info, err := video.File.Stat()
+	if err != nil {
+		respond(s, i, fmt.Sprintf("Could not get file info: %s", err.Error()))
 
-				return
-			}
+		return
+	}
+
+	// If codec isn't hevc or h264, or video size is too big
+	if (codec != "hevc" && codec != "h264") || info.Size() > 10*1000*1000 {
+		log.Printf("compressing video: %s", video.File.Name())
+		if err := video.compress(); err != nil {
+			respond(s, i, fmt.Sprintf("Could not compress video: %s", err.Error()))
+
+			return
 		}
 	}
 
@@ -367,8 +350,16 @@ func handleEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, opts opti
 	if opts["spoiler"] != nil && opts["spoiler"].BoolValue() {
 		log.Printf("adding spoiler: %s", video.File.Name())
 		if err := video.spoiler(); err != nil {
-			log.Printf("Could not add spoiler: %s", err)
+			respond(s, i, fmt.Sprintf("Could not add spoiler: %s", err.Error()))
+
+			return
 		}
+	}
+
+	// Get content type
+	mtype, err := mimetype.DetectFile(video.File.Name())
+	if err != nil {
+		log.Println("Could not get mime type, trying with default")
 	}
 
 	// Respond with video
@@ -377,18 +368,13 @@ func handleEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, opts opti
 		Files: []*discordgo.File{
 			{
 				Name:        video.File.Name(),
-				ContentType: "video/mp4",
+				ContentType: mtype.String(),
 				Reader:      video.File,
 			},
 		},
 	})
 	if err != nil {
-		resp := fmt.Sprintf("Could not upload to Discord: %s", err.Error())
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Content: &resp,
-		}); err != nil {
-			log.Printf("could not respond to interaction: %s", err)
-		}
+		respond(s, i, fmt.Sprintf("Could not upload to Discord: %s", err.Error()))
 
 		return
 	}
@@ -500,31 +486,7 @@ func (v *video) codec() (string, error) {
 	return string(out), nil
 }
 
-// convert converts the video to H264
-func (v *video) convert() error {
-	cmd := exec.Command("ffmpeg", "-i", v.File.Name(), "-c:v", "libx265", "-c:a", "aac", "-b:a", "160k", fmt.Sprintf("%s-convert.mp4", v.Name))
-
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-
-	// Delete original video
-	if err := v.delete(); err != nil {
-		return err
-	}
-
-	// Set new video name
-	v.Name = fmt.Sprintf("%s-convert", v.Name)
-
-	// Find new video file
-	if err := v.find(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// compress compresses the video to <25MB
+// convert and compresses the video to <10MB
 func (v *video) compress() error {
 	// Get length of video
 	cmd := exec.Command("ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", v.File.Name())
@@ -541,17 +503,21 @@ func (v *video) compress() error {
 	}
 	length = length + 1
 
-	// Compresses video to <25MB
+	// Compresses video to <10MB
 	targetSize := 10 * 1000 * 1000 * 8
 	totalBitrate := targetSize / length
 	audioBitrate := 128 * 1000
 	videoBitrate := totalBitrate - audioBitrate
 
 	cmd = exec.Command("ffmpeg",
+		"-hwaccel", "qsv",
+		"-hwaccel_output_format", "qsv",
 		"-i", v.File.Name(),
+		"-c:v", "hevc_qsv",
 		"-b:v", strconv.Itoa(videoBitrate),
 		"-maxrate:v", strconv.Itoa(videoBitrate),
 		"-bufsize:v", strconv.Itoa(targetSize/20),
+		"-c:a", "aac",
 		"-b:a", strconv.Itoa(audioBitrate),
 		fmt.Sprintf("%s-compress.mp4", v.Name),
 	)
