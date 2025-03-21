@@ -1,6 +1,6 @@
 FROM debian:trixie-slim
 
-WORKDIR /usr/src/discord-embedder
+WORKDIR /app
 
 # Allow non-free
 RUN sed -i -e's/ main/ main contrib non-free/g' /etc/apt/sources.list.d/debian.sources

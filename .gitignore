@@ -2,5 +2,6 @@
 .env
 /tmp
 /result
-dist/
+/dist
 /cookies
+/files

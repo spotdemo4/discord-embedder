@@ -1,0 +1,16 @@
+<head>
+    <meta charset="utf-8">
+    <title>Discord Embedder</title>
+    <base href="/">
+    <meta property="og:image" content="{{.ImageURL}}">
+    <meta property="og:type" content="video.other">
+    <meta property="og:video:url" content="{{.VideoURL}}">
+    <meta property="og:video:width" content="{{.Width}}">
+    <meta property="og:video:height" content="{{.Height}}">
+</head>
+
+<body>
+    <video id="player" crossorigin="" controls="" poster="{{.ImageURL}}">
+        <source src="{{.VideoURL}}">
+    </video>
+</body>

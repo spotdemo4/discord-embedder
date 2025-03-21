@@ -5,7 +5,11 @@ services:
     environment:
       DISCORD_TOKEN: ${DISCORD_TOKEN}
       DISCORD_APPLICATION_ID: ${DISCORD_APPLICATION_ID}
+      HOST: ${HOST}
+    ports:
+      - "8080:8080"
     volumes:
-      - ./cookies:/usr/src/discord-embedder/cookies
+      - ./cookies:/app/cookies
+      - ./files:/app/files
     container_name: discord-embedder
     restart: unless-stopped
