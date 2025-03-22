@@ -67,7 +67,7 @@ func NewHomeHandler(home embed.FS, host string) func(http.ResponseWriter, *http.
 
 			// Serve page
 			page := Page{
-				ImageURL: fmt.Sprintf("%s/files/%s.%s", host, fileID, ".jpeg"),
+				ImageURL: fmt.Sprintf("%s/files/%s.%s", host, fileID, "jpeg"),
 				VideoURL: fmt.Sprintf("%s/%s", host, file.Name()),
 				Width:    width,
 				Height:   height,
