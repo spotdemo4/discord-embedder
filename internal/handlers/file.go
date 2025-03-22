@@ -2,10 +2,10 @@ package handlers
 
 import (
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 )
 
 func NewFileHandler() func(http.ResponseWriter, *http.Request) {
@@ -27,20 +27,11 @@ func NewFileHandler() func(http.ResponseWriter, *http.Request) {
 			}
 			defer file.Close()
 
-			// Get first 512 bytes of file
-			start := make([]byte, 512)
-			_, err = file.Read(start)
-			if err != nil {
-				http.Error(w, "Could not get content type", http.StatusInternalServerError)
-				return
-			}
-
 			// Set response headers
-			w.Header().Set("Content-Type", http.DetectContentType(start))
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 
-			// Write to output
-			io.Copy(w, file)
+			// Serve video
+			http.ServeContent(w, r, fileName, time.Now(), file)
 		}
 	}
 }
