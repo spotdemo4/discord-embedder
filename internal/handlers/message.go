@@ -13,7 +13,7 @@ import (
 	"github.com/gabriel-vasile/mimetype"
 )
 
-func NewMessageHandler(host string) interface{} {
+func NewMessageHandler(host string, quicksync bool) interface{} {
 	return func(s *discordgo.Session, i *discordgo.MessageCreate) {
 		if i.Author.ID == s.State.User.ID {
 			return
@@ -30,7 +30,7 @@ func NewMessageHandler(host string) interface{} {
 			u, err := url.ParseRequestURI(i.Message.Content)
 			if err == nil && u.Scheme != "" && u.Host != "" {
 				// Handle message
-				handleMessage(s, i, host)
+				handleMessage(s, i, host, quicksync)
 			}
 		}
 	}
@@ -76,7 +76,7 @@ func handleDirectMessage(s *discordgo.Session, i *discordgo.MessageCreate) {
 	return
 }
 
-func handleMessage(s *discordgo.Session, i *discordgo.MessageCreate, host string) {
+func handleMessage(s *discordgo.Session, i *discordgo.MessageCreate, host string, quicksync bool) {
 	// Defer delete
 	thinkingMessage, err := s.ChannelMessageSend(i.ChannelID, "Thinking...")
 	if err != nil {
@@ -142,7 +142,7 @@ func handleMessage(s *discordgo.Session, i *discordgo.MessageCreate, host string
 		}
 	} else {
 		log.Printf("Compressing video: %s", video.File.Name())
-		if err := video.Compress(); err != nil {
+		if err := video.Compress(quicksync); err != nil {
 			log.Printf("Could not compress video: %s", err.Error())
 			return
 		}
@@ -161,7 +161,8 @@ func handleMessage(s *discordgo.Session, i *discordgo.MessageCreate, host string
 
 		// Respond with message
 		log.Printf("Sending message: %s", video.ID)
-		message, err = s.ChannelMessageSend(i.ChannelID, fmt.Sprintf("%s/%s", host, video.ID))
+		videoembed := fmt.Sprintf("-# [.](%s/%s)", host, video.ID)
+		message, err = s.ChannelMessageSend(i.ChannelID, videoembed)
 		if err != nil {
 			log.Printf("Could not send video to discord: %s", err.Error())
 			return

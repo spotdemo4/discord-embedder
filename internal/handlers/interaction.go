@@ -9,7 +9,7 @@ import (
 	"github.com/gabriel-vasile/mimetype"
 )
 
-func NewInteractionHandler(host string) interface{} {
+func NewInteractionHandler(host string, quicksync bool) interface{} {
 	return func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		if i.Type != discordgo.InteractionApplicationCommand {
 			return
@@ -18,7 +18,7 @@ func NewInteractionHandler(host string) interface{} {
 		data := i.ApplicationCommandData()
 		switch data.Name {
 		case "embed":
-			handleEmbed(s, i, parseOptions(data.Options), host)
+			handleEmbed(s, i, parseOptions(data.Options), host, quicksync)
 
 		default:
 			log.Printf("unknown command: %s", data.Name)
@@ -45,7 +45,7 @@ func respond(s *discordgo.Session, i *discordgo.InteractionCreate, message strin
 	}
 }
 
-func handleEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, opts optionMap, host string) {
+func handleEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, opts optionMap, host string, quicksync bool) {
 	// Defer response
 	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
@@ -128,7 +128,7 @@ func handleEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, opts opti
 		}
 	} else {
 		log.Printf("Compressing video: %s", video.File.Name())
-		if err := video.Compress(); err != nil {
+		if err := video.Compress(quicksync); err != nil {
 			respond(s, i, fmt.Sprintf("Could not compress video: %s", err.Error()))
 			return
 		}
@@ -147,9 +147,9 @@ func handleEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, opts opti
 
 		// Respond with message
 		log.Printf("Sending message: %s", video.ID)
-		fileurl := fmt.Sprintf("%s/%s", host, video.ID)
+		videoembed := fmt.Sprintf("-# [.](%s/%s)", host, video.ID)
 		message, err = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Content: &fileurl,
+			Content: &videoembed,
 		})
 		if err != nil {
 			log.Printf("Could not send video to discord: %s", err.Error())

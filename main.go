@@ -72,6 +72,7 @@ func main() {
 	if Host == "" {
 		log.Fatalf("env HOST not set")
 	}
+	Quicksync := os.Getenv("QUICKSYNC") == "true"
 
 	// Check if yt-dlp is installed
 	if _, err := exec.LookPath("yt-dlp"); err != nil {
@@ -119,8 +120,8 @@ func main() {
 	}
 
 	// Add discord handlers
-	session.AddHandler(handlers.NewInteractionHandler(Host))
-	session.AddHandler(handlers.NewMessageHandler(Host))
+	session.AddHandler(handlers.NewInteractionHandler(Host, Quicksync))
+	session.AddHandler(handlers.NewMessageHandler(Host, Quicksync))
 	session.AddHandler(handlers.NewReadyHandler(DiscordApplicationID, commands))
 	session.AddHandler(handlers.NewJoinHandler(DiscordApplicationID, commands))
 

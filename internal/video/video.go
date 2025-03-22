@@ -140,24 +140,27 @@ func (v *video) Codec() (string, error) {
 }
 
 // convert and compresses the video to <10MB
-func (v *video) Compress() error {
-
-	cmd := exec.Command("ffmpeg",
-		"-hwaccel", "qsv",
-		"-hwaccel_output_format", "qsv",
-		"-i", v.File.Name(),
-		"-c:v:0", "av1_qsv",
-		"-global_quality:v:0", "23",
-		"-c:a", "aac",
-		fmt.Sprintf("%s-compress.mp4", v.Name),
-	)
-	// cmd := exec.Command("ffmpeg",
-	// 	"-i", v.File.Name(),
-	// 	"-c:v:0", "libsvtav1",
-	// 	"-global_quality:v:0", "23",
-	// 	"-c:a", "aac",
-	// 	fmt.Sprintf("%s-compress.mp4", v.Name),
-	// )
+func (v *video) Compress(quicksync bool) error {
+	var cmd *exec.Cmd
+	if quicksync {
+		cmd = exec.Command("ffmpeg",
+			"-hwaccel", "qsv",
+			"-hwaccel_output_format", "qsv",
+			"-i", v.File.Name(),
+			"-c:v:0", "av1_qsv",
+			"-global_quality:v:0", "23",
+			"-c:a", "aac",
+			fmt.Sprintf("%s-compress.mp4", v.Name),
+		)
+	} else {
+		cmd = exec.Command("ffmpeg",
+			"-i", v.File.Name(),
+			"-c:v:0", "libsvtav1",
+			"-global_quality:v:0", "23",
+			"-c:a", "aac",
+			fmt.Sprintf("%s-compress.mp4", v.Name),
+		)
+	}
 	if err := cmd.Run(); err != nil {
 		return err
 	}

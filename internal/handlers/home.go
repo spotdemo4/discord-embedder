@@ -31,7 +31,6 @@ func NewHomeHandler(home embed.FS, host string) func(http.ResponseWriter, *http.
 			}
 
 			fileID := pathItems[1]
-			log.Println(fileID)
 
 			// Find video file
 			var file *os.File

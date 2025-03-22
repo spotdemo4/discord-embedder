@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y intel-media-va-driver-non-free libmfx-g
 RUN apt-get install -y golang ffmpeg curl python3
 
 # Download yt-dlp
-RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp && chmod +x /usr/local/bin/yt-dlp
+RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux -o /usr/local/bin/yt-dlp && chmod +x /usr/local/bin/yt-dlp
 
 # Install deps
 COPY go.mod go.sum ./
