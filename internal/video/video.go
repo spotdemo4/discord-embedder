@@ -42,6 +42,21 @@ func (v *video) Download() error {
 	// Find domain of URL
 	domain := strings.TrimPrefix(v.Url.Hostname(), "www.")
 
+	// Creds
+	username := ""
+	password := ""
+	switch domain {
+	case "reddit.com":
+		username = os.Getenv("REDDIT_USERNAME")
+		password = os.Getenv("REDDIT_PASSWORD")
+	case "tiktok.com":
+		username = os.Getenv("TIKTOK_USERNAME")
+		password = os.Getenv("TIKTOK_PASSWORD")
+	case "instagram.com":
+		username = os.Getenv("INSTAGRAM_USERNAME")
+		password = os.Getenv("INSTAGRAM_PASSWORD")
+	}
+
 	// Check if cookie file exists for URL
 	cookieFileName := ""
 	err := filepath.Walk("cookies", func(path string, info os.FileInfo, err error) error {
@@ -61,19 +76,46 @@ func (v *video) Download() error {
 	}
 
 	// Download video
-	var cmd *exec.Cmd
-	if cookieFileName == "" {
-		cmd = exec.Command("yt-dlp", "-o", fmt.Sprintf("%s.%%(ext)s", v.Name), v.Url.String())
-	} else {
-		log.Printf("using cookie file: %s", cookieFileName)
-		cmd = exec.Command("yt-dlp", "-o", fmt.Sprintf("%s.%%(ext)s", v.Name), "--cookies", filepath.Join("cookies", cookieFileName), v.Url.String())
+	if username != "" && password != "" {
+		log.Println("Trying to download with credentials...")
+		cmd := exec.Command(
+			"yt-dlp",
+			"-o", fmt.Sprintf("%s.%%(ext)s", v.Name),
+			"--username", username,
+			"--password", password,
+			v.Url.String(),
+		)
+		if err := cmd.Run(); err == nil {
+			if err := v.find(); err == nil {
+				return nil
+			}
+		}
 	}
+
+	if cookieFileName != "" {
+		log.Printf("Trying to download with cookie file: %s", cookieFileName)
+		cmd := exec.Command(
+			"yt-dlp",
+			"-o", fmt.Sprintf("%s.%%(ext)s", v.Name),
+			"--cookies", filepath.Join("cookies", cookieFileName),
+			v.Url.String(),
+		)
+		if err := cmd.Run(); err == nil {
+			if err := v.find(); err == nil {
+				return nil
+			}
+		}
+	}
+
+	cmd := exec.Command(
+		"yt-dlp",
+		"-o", fmt.Sprintf("%s.%%(ext)s", v.Name),
+		v.Url.String(),
+	)
 
 	if err := cmd.Run(); err != nil {
 		return err
 	}
-
-	// Find video file
 	if err := v.find(); err != nil {
 		return err
 	}
