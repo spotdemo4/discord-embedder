@@ -25,6 +25,7 @@ func NewFileHandler() func(http.ResponseWriter, *http.Request) {
 			}
 
 			w.Header().Set("Content-Type", http.DetectContentType(file))
+			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.Write(file)
 		}
 	}
