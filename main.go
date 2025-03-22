@@ -130,7 +130,7 @@ func main() {
 	// Add server handlers
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handlers.NewHomeHandler(home, Host))
-	mux.Handle("/files/", http.StripPrefix("/files", handlers.NewFileHandler()))
+	mux.HandleFunc("/files/", handlers.NewFileHandler())
 
 	// Create HTTP server
 	server := &http.Server{
