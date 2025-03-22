@@ -20,6 +20,6 @@ RUN go mod download && go mod verify
 
 # Build
 COPY . .
-RUN go build -v -o /usr/local/bin/discord-embedder ./...
+RUN go build -v -o /usr/local/bin/discord-embedder .
 
 CMD ["discord-embedder"]
