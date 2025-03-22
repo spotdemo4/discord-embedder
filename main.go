@@ -105,14 +105,6 @@ func main() {
 		}
 	}
 
-	// Check if download directory exists
-	if _, err := os.Stat("download"); os.IsNotExist(err) {
-		// Create cookies directory
-		if err := os.Mkdir("download", 0755); err != nil {
-			log.Fatalf("could not create download directory: %s", err)
-		}
-	}
-
 	// Create a new Discord session using the provided bot token
 	session, err := discordgo.New("Bot " + DiscordToken)
 	if err != nil {
