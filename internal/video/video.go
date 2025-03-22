@@ -107,6 +107,7 @@ func (v *video) Download() error {
 		}
 	}
 
+	log.Println("Falling back to default downloader...")
 	cmd := exec.Command(
 		"yt-dlp",
 		"-o", fmt.Sprintf("%s.%%(ext)s", v.Name),
