@@ -266,7 +266,7 @@ func (v *video) Spoiler() error {
 	v.Name = fmt.Sprintf("SPOILER_%s", v.File.Name())
 
 	// Open new file
-	v.File, err = os.Open(v.File.Name())
+	v.File, err = os.Open(v.Name)
 	if err != nil {
 		return err
 	}
