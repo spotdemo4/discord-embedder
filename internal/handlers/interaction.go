@@ -147,7 +147,12 @@ func handleEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, opts opti
 
 		// Respond with message
 		log.Printf("Sending message: %s", video.ID)
-		videoembed := fmt.Sprintf("-# [.](%s/%s)", host, video.ID)
+		videoembed := ""
+		if video.Spoil {
+			videoembed = fmt.Sprintf("-# || [.](%s/%s) ||", host, video.ID)
+		} else {
+			videoembed = fmt.Sprintf("-# [.](%s/%s)", host, video.ID)
+		}
 		message, err = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 			Content: &videoembed,
 		})

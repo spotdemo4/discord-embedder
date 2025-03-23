@@ -279,10 +279,6 @@ func (v *video) Spoiler() error {
 func (v *video) Export() error {
 	fn := fmt.Sprintf("%s%s", v.ID, filepath.Ext(v.File.Name()))
 
-	if v.Spoil {
-		fn = fmt.Sprintf("SPOILER_%s", fn)
-	}
-
 	// Create new file
 	destFile, err := os.Create(fmt.Sprintf("files/%s", fn))
 	if err != nil {
