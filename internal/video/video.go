@@ -15,10 +15,11 @@ import (
 )
 
 type video struct {
-	ID   string
-	Name string
-	Url  *url.URL
-	File *os.File
+	ID    string
+	Name  string
+	Spoil bool
+	Url   *url.URL
+	File  *os.File
 }
 
 func New(downloadURL string) (*video, error) {
@@ -29,9 +30,10 @@ func New(downloadURL string) (*video, error) {
 	ID := uuid.New().String()
 
 	video := &video{
-		ID:   ID,
-		Name: ID,
-		Url:  URL,
+		ID:    ID,
+		Name:  ID,
+		Spoil: false,
+		Url:   URL,
 	}
 
 	return video, nil
@@ -261,7 +263,7 @@ func (v *video) Spoiler() error {
 	}
 
 	// Set new video name
-	v.Name = fmt.Sprintf("SPOILER_%s", v.Name)
+	v.Name = fmt.Sprintf("SPOILER_%s", v.File.Name())
 
 	// Open new file
 	v.File, err = os.Open(v.File.Name())
@@ -269,11 +271,17 @@ func (v *video) Spoiler() error {
 		return err
 	}
 
+	v.Spoil = true
+
 	return nil
 }
 
 func (v *video) Export() error {
 	fn := fmt.Sprintf("%s%s", v.ID, filepath.Ext(v.File.Name()))
+
+	if v.Spoil {
+		fn = fmt.Sprintf("SPOILER_%s", fn)
+	}
 
 	// Create new file
 	destFile, err := os.Create(fmt.Sprintf("files/%s", fn))
