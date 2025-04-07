@@ -57,6 +57,9 @@ func (v *video) Download() error {
 	case "instagram.com":
 		username = os.Getenv("INSTAGRAM_USERNAME")
 		password = os.Getenv("INSTAGRAM_PASSWORD")
+	case "x.com":
+		username = os.Getenv("X_USERNAME")
+		password = os.Getenv("X_PASSWORD")
 	}
 
 	// Check if cookie file exists for URL
