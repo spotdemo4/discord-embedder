@@ -195,7 +195,7 @@ func (v *video) Compress(quicksync bool) error {
 			"-hwaccel", "qsv",
 			"-hwaccel_output_format", "qsv",
 			"-i", v.File.Name(),
-			"-c:v:0", "av1_qsv",
+			"-c:v:0", "h264_qsv",
 			"-global_quality:v:0", "23",
 			"-c:a", "aac",
 			fmt.Sprintf("%s-compress.mp4", v.Name),
@@ -203,7 +203,7 @@ func (v *video) Compress(quicksync bool) error {
 	} else {
 		cmd = exec.Command("ffmpeg",
 			"-i", v.File.Name(),
-			"-c:v:0", "libsvtav1",
+			"-c:v:0", "libx264",
 			"-global_quality:v:0", "23",
 			"-c:a", "aac",
 			fmt.Sprintf("%s-compress.mp4", v.Name),
