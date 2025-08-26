@@ -1,10 +1,11 @@
 package video
 
 import (
+	"context"
+	"discord-embedder/internal/app"
 	"errors"
 	"fmt"
-	"io"
-	"log"
+	"io/fs"
 	"net/url"
 	"os"
 	"os/exec"
@@ -14,35 +15,22 @@ import (
 	"github.com/google/uuid"
 )
 
-type video struct {
-	ID    string
-	Name  string
-	Spoil bool
-	Url   *url.URL
-	File  *os.File
+type Video struct {
+	*app.App
+
+	ID           string
+	Name         string
+	AbsolutePath string
 }
 
-func New(downloadURL string) (*video, error) {
-	URL, err := url.Parse(downloadURL)
+func Download(ctx context.Context, downloadURL string, filesDir string) (*Video, error) {
+	link, err := url.Parse(downloadURL)
 	if err != nil {
 		return nil, err
 	}
-	ID := uuid.New().String()
 
-	video := &video{
-		ID:    ID,
-		Name:  ID,
-		Spoil: false,
-		Url:   URL,
-	}
-
-	return video, nil
-}
-
-// download downloads the video
-func (v *video) Download() error {
-	// Find domain of URL
-	domain := strings.TrimPrefix(v.Url.Hostname(), "www.")
+	domain := strings.TrimPrefix(link.Hostname(), "www.")
+	id := uuid.New().String()
 
 	// Creds
 	username := ""
@@ -62,121 +50,159 @@ func (v *video) Download() error {
 		password = os.Getenv("X_PASSWORD")
 	}
 
-	// Check if cookie file exists for URL
-	cookieFileName := ""
-	err := filepath.Walk("cookies", func(path string, info os.FileInfo, err error) error {
+	// Download video with creds
+	if username != "" && password != "" {
+		cmd := exec.CommandContext(ctx,
+			"yt-dlp",
+			"-o", fmt.Sprintf("%s.%%(ext)s", filepath.Join(filesDir, id)),
+			"--username", username,
+			"--password", password,
+			link.String(),
+		)
+		if err = cmd.Run(); err == nil {
+			return Get(id, filesDir)
+		}
+	}
+
+	// Download video without creds
+	cmd := exec.CommandContext(ctx,
+		"yt-dlp",
+		"-o", fmt.Sprintf("%s.%%(ext)s", filepath.Join(filesDir, id)),
+		link.String(),
+	)
+
+	if err = cmd.Run(); err != nil {
+		return nil, err
+	}
+
+	return Get(id, filesDir)
+}
+
+func Get(id string, filesDir string) (*Video, error) {
+	// Find video file
+	var name string
+	var absolutePath string
+	err := filepath.WalkDir(filesDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-
-		// Check if cookie file exists for domain
-		if strings.Contains(info.Name(), domain) {
-			cookieFileName = info.Name()
+		if d.IsDir() {
+			return nil
+		}
+		if !strings.HasPrefix(strings.TrimPrefix(d.Name(), "SPOILER_"), id) {
+			return nil
+		}
+		if strings.HasSuffix(d.Name(), "jpeg") {
+			return nil
 		}
 
-		return nil
+		name = d.Name()
+		absolutePath = filepath.Join(path, d.Name())
+
+		return fs.SkipAll
 	})
 	if err != nil {
+		return nil, err
+	}
+	if name == "" || absolutePath == "" {
+		return nil, errors.New("could not find video file")
+	}
+
+	// Return video
+	return &Video{
+		ID:           id,
+		Name:         name,
+		AbsolutePath: absolutePath,
+	}, nil
+}
+
+// Compress converts and compresses the video.
+func (v *Video) Compress(ctx context.Context, quicksync bool) error {
+	id := uuid.New().String()
+	newPath := filepath.Join(v.FilesDir, fmt.Sprintf("%s.mp4", id))
+
+	var cmd *exec.Cmd
+	if quicksync {
+		cmd = exec.CommandContext(ctx, "ffmpeg",
+			"-hwaccel", "qsv",
+			"-hwaccel_output_format", "qsv",
+			"-i", v.AbsolutePath,
+			"-c:v:0", "h264_qsv",
+			"-global_quality:v:0", "23",
+			"-c:a", "aac",
+			newPath,
+		)
+	} else {
+		cmd = exec.CommandContext(ctx, "ffmpeg",
+			"-i", v.AbsolutePath,
+			"-c:v:0", "libx264",
+			"-global_quality:v:0", "23",
+			"-c:a", "aac",
+			newPath,
+		)
+	}
+	if err := cmd.Run(); err != nil {
 		return err
 	}
 
-	// Download video
-	if username != "" && password != "" {
-		log.Println("Trying to download with credentials...")
-		cmd := exec.Command(
-			"yt-dlp",
-			"-o", fmt.Sprintf("%s.%%(ext)s", v.Name),
-			"--username", username,
-			"--password", password,
-			v.Url.String(),
-		)
-		if err := cmd.Run(); err == nil {
-			if err := v.find(); err == nil {
-				return nil
-			}
-		}
+	// Delete original video
+	if err := v.delete(); err != nil {
+		return err
 	}
 
-	if cookieFileName != "" {
-		log.Printf("Trying to download with cookie file: %s", cookieFileName)
-		cmd := exec.Command(
-			"yt-dlp",
-			"-o", fmt.Sprintf("%s.%%(ext)s", v.Name),
-			"--cookies", filepath.Join("cookies", cookieFileName),
-			v.Url.String(),
-		)
-		if err := cmd.Run(); err == nil {
-			if err := v.find(); err == nil {
-				return nil
-			}
-		}
-	}
+	// Get new video
+	v.ID = id
+	v.Name = fmt.Sprintf("%s.mp4", id)
+	v.AbsolutePath = newPath
 
-	log.Println("Falling back to default downloader...")
-	cmd := exec.Command(
-		"yt-dlp",
-		"-o", fmt.Sprintf("%s.%%(ext)s", v.Name),
-		v.Url.String(),
-	)
+	return nil
+}
+
+// Trim video to start and end time.
+func (v *Video) Trim(ctx context.Context, start string, end string) error {
+	id := uuid.New().String()
+	newPath := filepath.Join(v.FilesDir, fmt.Sprintf("%s.mp4", id))
+
+	cmd := exec.CommandContext(ctx, "ffmpeg", "-ss", start, "-to", end, "-i", v.AbsolutePath, newPath)
 
 	if err := cmd.Run(); err != nil {
 		return err
 	}
-	if err := v.find(); err != nil {
+
+	// Delete original video
+	if err := v.delete(); err != nil {
+		return err
+	}
+
+	// Set new video
+	v.ID = id
+	v.Name = fmt.Sprintf("%s.mp4", id)
+	v.AbsolutePath = newPath
+
+	return nil
+}
+
+// Thumbnail generates a thumbnail for video.
+func (v *Video) Thumbnail(ctx context.Context) error {
+	imagePath := filepath.Join(v.FilesDir, fmt.Sprintf("%s.jpeg", v.ID))
+
+	cmd := exec.CommandContext(ctx, "ffmpeg", "-i", v.AbsolutePath, "-vframes", "1", imagePath)
+	if err := cmd.Run(); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-// find finds the video file
-func (v *video) find() error {
-	err := filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if strings.HasPrefix(info.Name(), v.Name) {
-			v.File, err = os.Open(info.Name())
-			if err != nil {
-				return err
-			}
-		}
-
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-	if v.File == nil {
-		return errors.New("could not find video file")
-	}
-
-	return nil
-}
-
-// delete deletes the video file
-func (v *video) Delete() error {
-	if err := v.File.Close(); err != nil {
-		log.Printf("could not close file: %s", err)
-	}
-
-	if err := os.Remove(v.File.Name()); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// codec returns the codec of the video
-func (v *video) Codec() (string, error) {
-	cmd := exec.Command(
+// Codec returns the codec of the video.
+func (v *Video) Codec(ctx context.Context) (string, error) {
+	cmd := exec.CommandContext(ctx,
 		"ffprobe",
 		"-v", "error",
 		"-select_streams", "v:0",
 		"-show_entries", "stream=codec_name",
 		"-of", "default=noprint_wrappers=1:nokey=1",
-		v.File.Name(),
+		v.AbsolutePath,
 	)
 
 	out, err := cmd.Output()
@@ -187,127 +213,33 @@ func (v *video) Codec() (string, error) {
 	return string(out), nil
 }
 
-// convert and compresses the video to <10MB
-func (v *video) Compress(quicksync bool) error {
-	var cmd *exec.Cmd
-	if quicksync {
-		cmd = exec.Command("ffmpeg",
-			"-hwaccel", "qsv",
-			"-hwaccel_output_format", "qsv",
-			"-i", v.File.Name(),
-			"-c:v:0", "h264_qsv",
-			"-global_quality:v:0", "23",
-			"-c:a", "aac",
-			fmt.Sprintf("%s-compress.mp4", v.Name),
-		)
-	} else {
-		cmd = exec.Command("ffmpeg",
-			"-i", v.File.Name(),
-			"-c:v:0", "libx264",
-			"-global_quality:v:0", "23",
-			"-c:a", "aac",
-			fmt.Sprintf("%s-compress.mp4", v.Name),
-		)
-	}
-	if err := cmd.Run(); err != nil {
-		return err
+// Resolution returns the width and height of the video.
+func (v *Video) Resolution(ctx context.Context) (string, string, error) {
+	cmd := exec.CommandContext(ctx,
+		"ffprobe",
+		"-v", "error",
+		"-select_streams", "v:0",
+		"-show_entries", "stream=width,height",
+		"-of", "csv=s=x:p=0",
+		v.AbsolutePath,
+	)
+
+	out, err := cmd.Output()
+	if err != nil {
+		return "", "", err
 	}
 
-	// Delete original video
-	if err := v.Delete(); err != nil {
-		return err
+	resolution := strings.Split(string(out), "x")
+	if len(resolution) != 2 {
+		return "", "", errors.New("could not get resolution")
 	}
 
-	// Set new video name
-	v.Name = fmt.Sprintf("%s-compress", v.Name)
-
-	// Find new video file
-	if err := v.find(); err != nil {
-		return err
-	}
-
-	return nil
+	return resolution[0], resolution[1], nil
 }
 
-// Trim video to start and end time
-func (v *video) Trim(start string, end string) error {
-	cmd := exec.Command("ffmpeg", "-ss", start, "-to", end, "-i", v.File.Name(), fmt.Sprintf("%s-trim.mp4", v.Name))
-
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-
-	// Delete original video
-	if err := v.Delete(); err != nil {
-		return err
-	}
-
-	// Set new video name
-	v.Name = fmt.Sprintf("%s-trim", v.Name)
-
-	// Find new video file
-	if err := v.find(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// Add spoiler to video
-func (v *video) Spoiler() error {
-	if err := v.File.Close(); err != nil {
-		log.Printf("could not close file: %s", err)
-	}
-
-	// Rename starting with SPOILER
-	err := os.Rename(v.File.Name(), "SPOILER_"+v.File.Name())
-	if err != nil {
-		return err
-	}
-
-	// Set new video name
-	v.Name = fmt.Sprintf("SPOILER_%s", v.File.Name())
-
-	// Open new file
-	v.File, err = os.Open(v.Name)
-	if err != nil {
-		return err
-	}
-
-	v.Spoil = true
-
-	return nil
-}
-
-func (v *video) Export() error {
-	fn := fmt.Sprintf("%s%s", v.ID, filepath.Ext(v.File.Name()))
-
-	// Create new file
-	destFile, err := os.Create(fmt.Sprintf("files/%s", fn))
-	if err != nil {
-		return err
-	}
-	defer destFile.Close()
-
-	// Copy file over to /files
-	_, err = io.Copy(destFile, v.File)
-	if err != nil {
-		return err
-	}
-
-	// Make sure copy completes
-	err = destFile.Sync()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// Generate thumbnail for video
-func (v *video) Thumbnail() error {
-	cmd := exec.Command("ffmpeg", "-i", v.File.Name(), "-vframes", "1", fmt.Sprintf("files/%s.jpeg", v.ID))
-	if err := cmd.Run(); err != nil {
+// delete deletes the video file.
+func (v *Video) delete() error {
+	if err := os.Remove(v.AbsolutePath); err != nil {
 		return err
 	}
 

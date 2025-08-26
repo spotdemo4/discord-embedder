@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
-	"discord-embedder/internal/handlers"
+	"discord-embedder/internal/app"
+	"discord-embedder/internal/discord"
+	"discord-embedder/internal/web"
 	"embed"
 	"log"
 	"net/http"
@@ -11,124 +13,57 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-
-	"github.com/bwmarrin/discordgo"
-	"github.com/joho/godotenv"
 )
 
 //go:embed templates/home.html
 var home embed.FS
 
-var commands = []*discordgo.ApplicationCommand{
-	{
-		Name:        "embed",
-		Description: "Embed a video from a URL",
-		Options: []*discordgo.ApplicationCommandOption{
-			{
-				Name:        "url",
-				Description: "URL of the video to embed",
-				Type:        discordgo.ApplicationCommandOptionString,
-				Required:    true,
-			},
-			{
-				Name:        "start",
-				Description: "Start time of the video in 00:00 format (e.g. 01:30)",
-				Type:        discordgo.ApplicationCommandOptionString,
-				Required:    false,
-			},
-			{
-				Name:        "end",
-				Description: "End time of the video in 00:00 format (e.g. 02:00)",
-				Type:        discordgo.ApplicationCommandOptionString,
-				Required:    false,
-			},
-			{
-				Name:        "spoiler",
-				Description: "Whether to embed the video as a spoiler",
-				Type:        discordgo.ApplicationCommandOptionBoolean,
-				Required:    false,
-			},
-		},
-	},
-}
-
 func main() {
-	// Load environment variables from .env file
-	err := godotenv.Load()
-	if err != nil {
-		log.Println("Failed to load .env file, using environment variables")
-	}
+	ctx, cancel := context.WithCancel(context.Background())
 
-	// Get env
-	DiscordToken := os.Getenv("DISCORD_TOKEN")
-	if DiscordToken == "" {
-		log.Fatalf("env DISCORD_TOKEN not set")
+	a, err := app.New()
+	if err != nil {
+		log.Fatalf("could not initialize app: %s", err)
 	}
-	DiscordApplicationID := os.Getenv("DISCORD_APPLICATION_ID")
-	if DiscordApplicationID == "" {
-		log.Fatalf("env DISCORD_APPLICATION_ID not set")
-	}
-	Host := os.Getenv("HOST")
-	if Host == "" {
-		log.Fatalf("env HOST not set")
-	}
-	Quicksync := os.Getenv("QUICKSYNC") == "true"
 
 	// Check if yt-dlp is installed
-	if _, err := exec.LookPath("yt-dlp"); err != nil {
-		log.Fatalf("yt-dlp is not installed")
+	if _, err = exec.LookPath("yt-dlp"); err != nil {
+		a.Logger.Error("yt-dlp is not installed", "error", err)
+		os.Exit(1)
 	}
 
 	// Check if ffmpeg is installed
-	if _, err := exec.LookPath("ffmpeg"); err != nil {
-		log.Fatalf("ffmpeg is not installed")
+	if _, err = exec.LookPath("ffmpeg"); err != nil {
+		a.Logger.Error("ffmpeg is not installed", "error", err)
+		os.Exit(1)
 	}
 
 	// Check if ffprobe is installed
-	if _, err := exec.LookPath("ffprobe"); err != nil {
-		log.Fatalf("ffprobe is not installed")
+	if _, err = exec.LookPath("ffprobe"); err != nil {
+		a.Logger.Error("ffprobe is not installed", "error", err)
+		os.Exit(1)
 	}
 
-	// Check if cookies directory exists
-	if _, err := os.Stat("cookies"); os.IsNotExist(err) {
-		// Create cookies directory
-		if err := os.Mkdir("cookies", 0755); err != nil {
-			log.Fatalf("could not create cookies directory: %s", err)
-		}
-	}
-
-	// Check if files directory exists
-	if _, err := os.Stat("files"); os.IsNotExist(err) {
-		// Create cookies directory
-		if err := os.Mkdir("files", 0755); err != nil {
-			log.Fatalf("could not create files directory: %s", err)
-		}
-	}
-
-	// Create a new Discord session using the provided bot token
-	session, err := discordgo.New("Bot " + DiscordToken)
+	// Create a new Discord instance
+	d, err := discord.New(ctx, a)
 	if err != nil {
-		log.Fatalf("could not create session: %s", err)
+		a.Logger.Error("could not create discord instance", "error", err)
+		os.Exit(1)
 	}
-
-	// Add discord handlers
-	session.AddHandler(handlers.NewInteractionHandler(Host, Quicksync))
-	session.AddHandler(handlers.NewMessageHandler(Host, Quicksync))
-	session.AddHandler(handlers.NewReadyHandler(DiscordApplicationID, commands))
-	session.AddHandler(handlers.NewJoinHandler(DiscordApplicationID, commands))
-
-	// Add intents
-	session.Identify.Intents = discordgo.IntentsDirectMessages | discordgo.IntentsGuildMessages
 
 	// Add server handlers
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", handlers.NewHomeHandler(home, Host))
-	mux.HandleFunc("/files/", handlers.NewFileHandler())
+	mux.HandleFunc("/", web.NewHomeHandler(ctx, home, a.Host, a.FilesDir))
+	mux.HandleFunc("/files/", web.NewFileHandler(a.FilesDir))
 
 	// Create HTTP server
 	server := &http.Server{
-		Addr:    ":8080",
-		Handler: mux,
+		Addr:              ":8080",
+		Handler:           mux,
+		ReadTimeout:       5 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       15 * time.Second,
 	}
 
 	// Gracefully shutdown on SIGINT or SIGTERM
@@ -136,31 +71,29 @@ func main() {
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		sig := <-sigs
-		log.Printf("Received signal %s", sig)
-		log.Println("Exiting")
+		a.Logger.Info("exiting", "signal", sig)
+
+		// Cancel context
+		cancel()
 
 		// Close discord connection
-		err = session.Close()
+		err = d.Close()
 		if err != nil {
-			log.Printf("could not close session gracefully: %s", err)
+			a.Logger.Warn("could not close session gracefully", "error", err)
 		}
 
 		// Close webserver
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		if err := server.Shutdown(ctx); err != nil {
-			server.Close()
+		tctx, tcancel := context.WithTimeout(context.Background(), 10*time.Second)
+		if err = server.Shutdown(tctx); err != nil {
+			if err = server.Close(); err != nil {
+				a.Logger.Warn("could not close server gracefully", "error", err)
+			}
 		}
-		cancel()
+		tcancel()
 	}()
 
-	// Start the websocket connection to Discord
-	err = session.Open()
-	if err != nil {
-		log.Fatalf("could not open session: %s", err)
-	}
-
 	// Start http server
-	if err := server.ListenAndServe(); err != nil {
-		log.Fatal(err.Error())
+	if err = server.ListenAndServe(); err != nil {
+		a.Logger.Error("could not start server", "error", err)
 	}
 }

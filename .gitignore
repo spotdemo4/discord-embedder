@@ -1,7 +1,11 @@
-.direnv
 .env
-/tmp
-/result
-/dist
-/cookies
-/files
+/docker-compose.*
+
+# Build
+/build/
+/files/
+/tmp/
+
+# Nix
+/result*
+/.direnv/

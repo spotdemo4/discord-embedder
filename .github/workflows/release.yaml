@@ -1,0 +1,93 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: DeterminateSystems/nix-installer-action@90bb610b90bf290cad97484ba341453bd1cbefea # v19
+      - uses: spotdemo4/nix-simple-cache-action@50d1031e91f0ddfe3b20796f2b68337464afe7e6 # v1.4.1
+
+      - run: nix flake check -L --accept-flake-config
+
+  build:
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: DeterminateSystems/nix-installer-action@90bb610b90bf290cad97484ba341453bd1cbefea # v19
+      - uses: spotdemo4/nix-simple-cache-action@50d1031e91f0ddfe3b20796f2b68337464afe7e6 # v1.4.1
+
+      - run: |
+          mkdir binaries
+
+          nix build .#linux-amd64 --accept-flake-config
+          tar czf ts-server-linux-amd64.tar.gz -C result/bin ts-server
+          mv ts-server-linux-amd64.tar.gz binaries
+
+          nix build .#linux-arm64 --accept-flake-config
+          tar czf ts-server-linux-arm64.tar.gz -C result/bin ts-server
+          mv ts-server-linux-arm64.tar.gz binaries
+
+          nix build .#linux-arm --accept-flake-config
+          tar czf ts-server-linux-arm.tar.gz -C result/bin ts-server
+          mv ts-server-linux-arm.tar.gz binaries
+
+          nix build .#darwin-arm64 --accept-flake-config
+          tar czf ts-server-darwin-arm64.tar.gz -C result/bin ts-server
+          mv ts-server-darwin-arm64.tar.gz binaries
+
+          nix build .#windows-amd64 --accept-flake-config
+          zip -j ts-server-windows-amd64.zip result/bin/ts-server.exe
+          mv ts-server-windows-amd64.zip binaries
+
+      - uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8 # v2.3.2
+        with:
+          generate_release_notes: true
+          files: |-
+            binaries/*
+
+  package:
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: DeterminateSystems/nix-installer-action@90bb610b90bf290cad97484ba341453bd1cbefea # v19
+      - uses: spotdemo4/nix-simple-cache-action@50d1031e91f0ddfe3b20796f2b68337464afe7e6 # v1.4.1
+
+      - uses: nicknovitski/nix-develop@9be7cfb4b10451d3390a75dc18ad0465bed4932a # v1.2.1
+        with:
+          arguments: '--accept-flake-config'
+
+      - name: Build & push images
+        run: |
+          nix build .#image --accept-flake-config
+
+          TAG=${{ github.ref_name }}
+          VERSION=${TAG#v}
+
+          ./result | gzip --fast | skopeo copy \
+            --dest-creds=${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} \
+            docker-archive:/dev/stdin \
+            docker://ghcr.io/spotdemo4/ts-server:$VERSION
+
+  tag:
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - run: git push origin "${{ github.ref_name }}:latest" --force

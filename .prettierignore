@@ -1,0 +1,15 @@
+# Build
+/build/
+/files/
+/tmp/
+
+# Nix
+/result*
+/.direnv/
+
+# Package Managers
+/flake.lock
+/go.sum
+
+# Vendor
+/vendor/
