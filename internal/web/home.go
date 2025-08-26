@@ -5,9 +5,9 @@ import (
 	"discord-embedder/internal/video"
 	"embed"
 	"fmt"
+	"html/template"
 	"net/http"
 	"strings"
-	"text/template"
 )
 
 type Page struct {

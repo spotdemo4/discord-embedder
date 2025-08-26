@@ -44,7 +44,7 @@ func New() (*App, error) {
 
 	// Create file path if it doesn't exist
 	if _, err = os.Stat(filesDir); os.IsNotExist(err) {
-		if err = os.MkdirAll(filesDir, 0750); err != nil {
+		if err = os.MkdirAll(filesDir, 0600); err != nil {
 			logger.Error("could not create file path", "path", filesDir, "error", err)
 			return nil, err
 		}
