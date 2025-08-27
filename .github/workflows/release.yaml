@@ -11,7 +11,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: spotdemo4/nix/.github/actions/init@main
+      - uses: spotdemo4/discord-embedder/.github/actions/init@main
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
