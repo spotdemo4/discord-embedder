@@ -1,24 +1,23 @@
 package app
 
 import (
-	"errors"
 	"log/slog"
 	"os"
 
 	"github.com/joho/godotenv"
+	slogctx "github.com/veqryn/slog-context"
 )
 
 type App struct {
-	Logger               *slog.Logger
-	DiscordToken         string
-	DiscordApplicationID string
-	FilesDir             string
-	Host                 string
-	Quicksync            bool
+	Config
+
+	Logger *slog.Logger
 }
 
 func New() (*App, error) {
-	logger := slog.Default()
+	slogHandler := slog.NewTextHandler(os.Stdout, nil)
+	slogctxHandler := slogctx.NewHandler(slogHandler, nil)
+	logger := slog.New(slogctxHandler)
 
 	// Load environment variables from .env file
 	err := godotenv.Load()
@@ -26,44 +25,24 @@ func New() (*App, error) {
 		logger.Info("Failed to load .env file, using environment variables")
 	}
 
-	// Get env
-	discordToken := os.Getenv("DISCORD_TOKEN")
-	if discordToken == "" {
-		return nil, errors.New("env DISCORD_TOKEN not set")
+	// Parse config
+	cfg, err := config(logger)
+	if err != nil {
+		return nil, err
 	}
 
-	discordApplicationID := os.Getenv("DISCORD_APPLICATION_ID")
-	if discordApplicationID == "" {
-		return nil, errors.New("env DISCORD_APPLICATION_ID not set")
-	}
-
-	filesDir := os.Getenv("FILES_DIR")
-	if filesDir == "" {
-		filesDir = "./files"
-	}
-
-	// Create file path if it doesn't exist
-	if _, err = os.Stat(filesDir); os.IsNotExist(err) {
-		if err = os.MkdirAll(filesDir, 0600); err != nil {
-			logger.Error("could not create file path", "path", filesDir, "error", err)
-			return nil, err
-		}
-	}
-	logger.Info("using file path", "path", filesDir)
-
-	host := os.Getenv("HOST")
-	if host == "" {
-		return nil, errors.New("env HOST not set")
-	}
-
-	quicksync := os.Getenv("QUICKSYNC") == "true"
+	// Log config (without sensitive info)
+	logger.Info("config",
+		"discord_application_id", cfg.DiscordApplicationID,
+		"discord_channel_ids", cfg.DiscordChannelIDs,
+		"files_dir", cfg.FilesDir,
+		"temp_dir", cfg.TempDir,
+		"host", cfg.Host,
+		"quicksync", cfg.Quicksync,
+	)
 
 	return &App{
-		Logger:               logger,
-		DiscordToken:         discordToken,
-		DiscordApplicationID: discordApplicationID,
-		FilesDir:             filesDir,
-		Host:                 host,
-		Quicksync:            quicksync,
+		Config: *cfg,
+		Logger: logger,
 	}, nil
 }

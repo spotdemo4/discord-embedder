@@ -7,12 +7,11 @@ import (
 	"discord-embedder/internal/web"
 	"embed"
 	"log"
-	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
+	"sync"
 	"syscall"
-	"time"
 )
 
 //go:embed templates/home.html
@@ -20,6 +19,7 @@ var home embed.FS
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
+	wg := &sync.WaitGroup{}
 
 	a, err := app.New()
 	if err != nil {
@@ -44,27 +44,27 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Create a new Discord instance
-	d, err := discord.New(ctx, a)
-	if err != nil {
-		a.Logger.Error("could not create discord instance", "error", err)
-		os.Exit(1)
-	}
+	// Create Discord connection
+	wg.Add(1) // TODO: replace with wg.Go() when moved to Go 1.25
+	go func() {
+		err = discord.New(ctx, a)
+		if err != nil {
+			a.Logger.Error("problem with discord", "error", err)
+		}
 
-	// Add server handlers
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", web.NewHomeHandler(ctx, home, a.Host, a.FilesDir))
-	mux.HandleFunc("/files/", web.NewFileHandler(a.FilesDir))
+		wg.Done()
+	}()
 
-	// Create HTTP server
-	server := &http.Server{
-		Addr:              ":8080",
-		Handler:           mux,
-		ReadTimeout:       5 * time.Second,
-		ReadHeaderTimeout: 5 * time.Second,
-		WriteTimeout:      10 * time.Second,
-		IdleTimeout:       15 * time.Second,
-	}
+	// Create web server
+	wg.Add(1) // TODO: replace with wg.Go() when moved to Go 1.25
+	go func() {
+		err = web.New(ctx, a, home)
+		if err != nil {
+			a.Logger.Error("problem running web server", "error", err)
+		}
+
+		wg.Done()
+	}()
 
 	// Gracefully shutdown on SIGINT or SIGTERM
 	sigs := make(chan os.Signal, 1)
@@ -75,25 +75,9 @@ func main() {
 
 		// Cancel context
 		cancel()
-
-		// Close discord connection
-		err = d.Close()
-		if err != nil {
-			a.Logger.Warn("could not close session gracefully", "error", err)
-		}
-
-		// Close webserver
-		tctx, tcancel := context.WithTimeout(context.Background(), 10*time.Second)
-		if err = server.Shutdown(tctx); err != nil {
-			if err = server.Close(); err != nil {
-				a.Logger.Warn("could not close server gracefully", "error", err)
-			}
-		}
-		tcancel()
 	}()
 
-	// Start http server
-	if err = server.ListenAndServe(); err != nil {
-		a.Logger.Error("could not start server", "error", err)
-	}
+	// Wait for all goroutines to finish
+	wg.Wait()
+	a.Logger.Info("done")
 }

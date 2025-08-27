@@ -4,7 +4,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-func (d *Discord) readyHandler(commands []*discordgo.ApplicationCommand) interface{} {
+func (d *Discord) onReady(commands []*discordgo.ApplicationCommand) interface{} {
 	return func(s *discordgo.Session, r *discordgo.Ready) {
 		d.Logger.Info("Logged in", "user", r.User)
 

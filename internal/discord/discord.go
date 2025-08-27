@@ -3,6 +3,8 @@ package discord
 import (
 	"context"
 	"discord-embedder/internal/app"
+	"errors"
+	"os/exec"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -13,12 +15,12 @@ type Discord struct {
 	session *discordgo.Session
 }
 
-func New(ctx context.Context, a *app.App) (*Discord, error) {
-	// create a new Discord session using the provided bot token
+func New(ctx context.Context, a *app.App) error {
+	// Create a new Discord session using the provided bot token
 	session, err := discordgo.New("Bot " + a.DiscordToken)
 	if err != nil {
 		a.Logger.ErrorContext(ctx, "could not create discord session", "error", err)
-		return nil, err
+		return err
 	}
 
 	d := &Discord{
@@ -59,25 +61,46 @@ func New(ctx context.Context, a *app.App) (*Discord, error) {
 		},
 	}
 
-	// add discord handlers
-	session.AddHandler(d.interactionHandler(ctx))
-	session.AddHandler(d.messageHandler(ctx))
-	session.AddHandler(d.readyHandler(commands))
-	session.AddHandler(d.joinHandler(commands))
+	// Add discord handlers
+	session.AddHandler(d.onInteraction(ctx))
+	session.AddHandler(d.onMessage(ctx))
+	session.AddHandler(d.onReady(commands))
+	session.AddHandler(d.onJoin(commands))
 
-	// add intents
+	// Add intents
 	session.Identify.Intents = discordgo.IntentsDirectMessages | discordgo.IntentsGuildMessages
 
-	// start the websocket connection to Discord
+	// Start the websocket connection to Discord
 	err = session.Open()
 	if err != nil {
 		d.Logger.ErrorContext(ctx, "could not open session", "error", err)
-		return nil, err
+		return err
 	}
 
-	return d, nil
+	// Wait for context cancellation
+	d.Logger.InfoContext(ctx, "discord session started")
+	<-ctx.Done()
+
+	// Close the session
+	if err = session.Close(); err != nil {
+		d.Logger.ErrorContext(ctx, "could not close session", "error", err)
+		return err
+	}
+
+	d.Logger.InfoContext(ctx, "discord session closed")
+	return nil
 }
 
-func (d *Discord) Close() error {
-	return d.session.Close()
+// errMsg attempts to parse an exec.ExitError to return a more useful error message.
+func errMsg(err error) string {
+	if err == nil {
+		return ""
+	}
+
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) && len(exitErr.Stderr) > 0 {
+		return string(exitErr.Stderr)
+	}
+
+	return err.Error()
 }

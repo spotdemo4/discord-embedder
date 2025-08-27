@@ -4,7 +4,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-func (d *Discord) joinHandler(commands []*discordgo.ApplicationCommand) interface{} {
+func (d *Discord) onJoin(commands []*discordgo.ApplicationCommand) any {
 	return func(s *discordgo.Session, e *discordgo.GuildCreate) {
 		// register commands
 		_, err := s.ApplicationCommandBulkOverwrite(d.DiscordApplicationID, e.Guild.ID, commands)

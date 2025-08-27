@@ -105,8 +105,6 @@
           vendorHash = null;
           env.CGO_ENABLED = 0;
 
-          buildInputs = [pkgs.yt-dlp];
-
           meta = {
             description = "Embed videos from various sources into Discord messages";
             mainProgram = "discord-embedder";
@@ -121,7 +119,14 @@
           name = "${default.pname}";
           tag = "${default.version}";
           created = "now";
-          contents = [default];
+          contents = with pkgs; [
+            default
+
+            # deps
+            dockerTools.caCertificates
+            yt-dlp
+            ffmpeg
+          ];
           config = {
             Cmd = [
               "${pkgs.lib.meta.getExe default}"

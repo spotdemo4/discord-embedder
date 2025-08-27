@@ -1,6 +1,5 @@
 # Build
 /build/
-/files/
 /tmp/
 
 # Nix

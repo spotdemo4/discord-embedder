@@ -1,6 +1,7 @@
 package web
 
 import (
+	"discord-embedder/internal/app"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -8,11 +9,11 @@ import (
 	"time"
 )
 
-func NewFileHandler(filesDir string) func(http.ResponseWriter, *http.Request) {
+func fileHandler(a *app.App) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			pathItems := strings.Split(r.URL.Path, "/")
+			pathItems := strings.Split(r.URL.Path, "/") // /files/{filename}
 			if len(pathItems) < 3 {
 				http.Error(w, "Not found", http.StatusNotFound)
 				return
@@ -20,7 +21,7 @@ func NewFileHandler(filesDir string) func(http.ResponseWriter, *http.Request) {
 
 			// Open file
 			fileName := pathItems[2]
-			file, err := os.Open(filepath.Join(filesDir, fileName))
+			file, err := os.Open(filepath.Join(a.FilesDir, fileName))
 			if err != nil {
 				http.Error(w, "Not found", http.StatusNotFound)
 				return
