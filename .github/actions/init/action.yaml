@@ -9,6 +9,6 @@ runs:
           extra-substituters = https://trevnur.cachix.org
           extra-trusted-public-keys = trevnur.cachix.org-1:hBd15IdszwT52aOxdKs5vNTbq36emvEeGqpb25Bkq6o=
 
-    - uses: spotdemo4/nix-simple-cache-action@50d1031e91f0ddfe3b20796f2b68337464afe7e6 # v1.4.1
+    - uses: spotdemo4/nix-simple-cache-action@76fef57d795c4576d5c139f8d584145f3faef783 # v1.4.4
 
     - uses: nicknovitski/nix-develop@9be7cfb4b10451d3390a75dc18ad0465bed4932a # v1.2.1
