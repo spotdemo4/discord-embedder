@@ -18,7 +18,7 @@ Binary executables are available in [releases](https://github.com/spotdemo4/disc
 services:
   discord-embedder:
     container_name: discord-embedder
-    image: ghcr.io/spotdemo4/discord-embedder:0.1.2 # replace version with latest
+    image: ghcr.io/spotdemo4/discord-embedder:0.1.3 # replace version with latest
     environment:
       - DISCORD_TOKEN=...
       - DISCORD_APPLICATION_ID=...
@@ -56,7 +56,7 @@ environment.systemPackages = with pkgs; [
 
 ## Configuration
 
-All configuration is done through environment variables or a .env file:
+All configuration is done through environment variables or a .env file
 
 ```dotenv
 DISCORD_TOKEN=replaceme # Discord bot token
@@ -69,7 +69,7 @@ PORT=8080 # Port for the web server to listen on (default: 8080)
 QUICKSYNC=false # Toggle Intel QSV for compressing downloads
 ```
 
-You can also set login information to bypass content filters:
+You can also set login information to bypass content filters
 
 ```dotenv
 REDDIT_USERNAME=...
