@@ -99,7 +99,7 @@
       packages = with pkgs.nur.repos.trev.lib; rec {
         default = pkgs.buildGoModule (finalAttrs: {
           pname = "discord-embedder";
-          version = "0.1.3";
+          version = "0.1.4";
           src = ./.;
           goSum = ./go.sum;
           vendorHash = null;
