@@ -13,7 +13,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: spotdemo4/discord-embedder/.github/actions/init@main
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - run: nix flake check -L

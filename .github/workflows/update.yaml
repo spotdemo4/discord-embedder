@@ -13,8 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: spotdemo4/discord-embedder/.github/actions/init@main
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/create-github-app-token@a8d616148505b5069dccd32f177bb87d7f39123b # v2.1.1
         id: token
