@@ -3,6 +3,7 @@ package video
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -43,7 +44,7 @@ func (v *Video) Compress(ctx context.Context) error {
 	}
 
 	// Move temp to original path
-	err = os.Rename(tempPath, v.Path)
+	err = move(tempPath, v.Path)
 	if err != nil {
 		return err
 	}
@@ -67,7 +68,7 @@ func (v *Video) Trim(ctx context.Context, start string, end string) error {
 	}
 
 	// Move temp to original path
-	err = os.Rename(tempPath, v.Path)
+	err = move(tempPath, v.Path)
 	if err != nil {
 		return err
 	}
@@ -92,6 +93,37 @@ func (v *Video) thumbnail(ctx context.Context) error {
 		},
 	}
 	v.Thumbnail = &t
+
+	return nil
+}
+
+// move moves a file from src to dst.
+func move(src string, dst string) error {
+	// Open the source file
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return fmt.Errorf("failed to open source file: %w", err)
+	}
+	defer srcFile.Close() // Ensure source file is closed
+
+	// Create the destination file
+	dstFile, err := os.Create(dst)
+	if err != nil {
+		return fmt.Errorf("failed to create destination file: %w", err)
+	}
+	defer dstFile.Close() // Ensure destination file is closed
+
+	// Copy the content from source to destination
+	_, err = io.Copy(dstFile, srcFile)
+	if err != nil {
+		return fmt.Errorf("failed to copy file content: %w", err)
+	}
+
+	// Remove the original file
+	err = os.Remove(src)
+	if err != nil {
+		return fmt.Errorf("failed to remove original file: %w", err)
+	}
 
 	return nil
 }

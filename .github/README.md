@@ -1,4 +1,4 @@
-# Discord-Embedder
+# discord-embedder
 
 [![check](https://img.shields.io/github/actions/workflow/status/spotdemo4/discord-embedder/check.yaml?logo=GitHub&logoColor=%23cdd6f4&label=check&labelColor=%2311111b)](https://github.com/spotdemo4/discord-embedder/actions/workflows/check.yaml)
 [![flake](https://img.shields.io/github/actions/workflow/status/spotdemo4/discord-embedder/flake.yaml?logo=nixos&logoColor=%2389dceb&label=flake&labelColor=%2311111b)](https://github.com/spotdemo4/discord-embedder/actions/workflows/flake.yaml)
@@ -66,7 +66,7 @@ FILES_DIR=/tmp/files # Path to store downloaded files
 TMP_DIR=/tmp/temp # Path to store temporary files
 HOST=https://embed.example.com # URL where the web server will be reachable
 PORT=8080 # Port for the web server to listen on (default: 8080)
-QUICKSYNC=false # Toggle Intel QSV for compressing downloads
+QUICKSYNC=false # Toggle Intel QSV for transcoding downloaded videos (default: false)
 ```
 
 You can also set login information to bypass content filters
