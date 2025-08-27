@@ -59,14 +59,14 @@ environment.systemPackages = with pkgs; [
 All configuration is done through environment variables or a .env file:
 
 ```dotenv
-DISCORD_TOKEN="replaceme" # Discord bot token
-DISCORD_APPLICATION_ID="replaceme" # Discord application ID
-DISCORD_CHANNEL_IDS="000000000000,000000000000" # Comma seperated list of Discord channel IDs that will automatically embed URLs
-FILES_DIR="/tmp/files" # Path to store downloaded files
-TMP_DIR="/tmp/temp" # Path to store temporary files
-HOST="https://embed.example.com" # URL where the web server will be reachable
+DISCORD_TOKEN=replaceme # Discord bot token
+DISCORD_APPLICATION_ID=replaceme # Discord application ID
+DISCORD_CHANNEL_IDS=000000000000,000000000000 # Comma seperated list of Discord channel IDs that will automatically embed URLs
+FILES_DIR=/tmp/files # Path to store downloaded files
+TMP_DIR=/tmp/temp # Path to store temporary files
+HOST=https://embed.example.com # URL where the web server will be reachable
 PORT=8080 # Port for the web server to listen on (default: 8080)
-QUICKSYNC="false" # Toggle Intel QSV for compressing downloads
+QUICKSYNC=false # Toggle Intel QSV for compressing downloads
 ```
 
 You can also set login information to bypass content filters:
