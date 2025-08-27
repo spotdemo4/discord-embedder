@@ -7,6 +7,11 @@
 
 A Discord bot / web server that downloads and embeds videos
 
+## Requirements
+
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp)
+- [ffmpeg](https://ffmpeg.org/)
+
 ## Installation
 
 Binary executables are available in [releases](https://github.com/spotdemo4/discord-embedder/releases)
