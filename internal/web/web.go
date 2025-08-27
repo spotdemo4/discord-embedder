@@ -5,6 +5,7 @@ import (
 	"discord-embedder/internal/app"
 	"embed"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 )
@@ -19,7 +20,7 @@ func New(ctx context.Context, a *app.App, home embed.FS) error {
 
 	// Create HTTP server
 	server := &http.Server{
-		Addr:              ":8080",
+		Addr:              fmt.Sprintf(":%d", a.Port),
 		Handler:           mux,
 		ReadTimeout:       5 * time.Second,
 		ReadHeaderTimeout: 5 * time.Second,

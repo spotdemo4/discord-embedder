@@ -15,6 +15,7 @@ type Config struct {
 	FilesDir             string   `env:"FILES_DIR"`
 	TempDir              string   `env:"TMP_DIR"`
 	Host                 string   `env:"HOST,required"`
+	Port                 int      `env:"PORT"                                             envDefault:"8080"`
 	Quicksync            bool     `env:"QUICKSYNC"                                        envDefault:"false"`
 
 	// Logins
@@ -77,6 +78,17 @@ func config(logger *slog.Logger) (*Config, error) {
 			return nil, err
 		}
 	}
+
+	// Log config (without sensitive info)
+	logger.Info("got config",
+		"discord_application_id", cfg.DiscordApplicationID,
+		"discord_channel_ids", cfg.DiscordChannelIDs,
+		"files_dir", cfg.FilesDir,
+		"temp_dir", cfg.TempDir,
+		"host", cfg.Host,
+		"port", cfg.Port,
+		"quicksync", cfg.Quicksync,
+	)
 
 	return &cfg, nil
 }
