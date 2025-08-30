@@ -126,7 +126,11 @@
             dockerTools.caCertificates
             yt-dlp
             jellyfin-ffmpeg
-            vpl-gpu-rt # Intel QSV
+
+            # intel
+            vpl-gpu-rt # qsv
+            intel-media-driver # vaapi
+            intel-compute-runtime # opencl
           ];
           config = {
             Cmd = [
