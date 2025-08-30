@@ -26,6 +26,8 @@ func (v *Video) Compress(ctx context.Context) error {
 			"-c:v:0", "h264_qsv",
 			"-global_quality:v:0", "23",
 			"-c:a", "aac",
+			"-hide_banner",
+			"-loglevel", "error",
 			tempPath,
 		)
 	} else {
@@ -34,6 +36,8 @@ func (v *Video) Compress(ctx context.Context) error {
 			"-c:v:0", "libx264",
 			"-global_quality:v:0", "23",
 			"-c:a", "aac",
+			"-hide_banner",
+			"-loglevel", "error",
 			tempPath,
 		)
 	}
@@ -65,7 +69,14 @@ func (v *Video) Trim(ctx context.Context, start string, end string) error {
 	cfg := config.FromContext(ctx)
 	tempPath := filepath.Join(cfg.TempDir, v.Name)
 
-	cmd := exec.CommandContext(ctx, "ffmpeg", "-ss", start, "-to", end, "-i", v.Path, tempPath)
+	cmd := exec.CommandContext(ctx, "ffmpeg",
+		"-ss", start,
+		"-to", end,
+		"-i", v.Path,
+		"-hide_banner",
+		"-loglevel", "error",
+		tempPath,
+	)
 	out, err := cmd.Output()
 	if err != nil {
 		return err
@@ -95,7 +106,14 @@ func (v *Video) thumbnail(ctx context.Context) error {
 	name := fmt.Sprintf("%s.jpeg", v.ID)
 	path := filepath.Join(cfg.FilesDir, name)
 
-	cmd := exec.CommandContext(ctx, "ffmpeg", "-i", v.Path, "-update", "true", "-vframes:v", "1", path)
+	cmd := exec.CommandContext(ctx, "ffmpeg",
+		"-i", v.Path,
+		"-update", "true",
+		"-vframes:v", "1",
+		"-hide_banner",
+		"-loglevel", "error",
+		path,
+	)
 	out, err := cmd.Output()
 	if err != nil {
 		return err
