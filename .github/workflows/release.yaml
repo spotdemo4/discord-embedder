@@ -21,7 +21,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: spotdemo4/nix/.github/actions/init@main
+      - uses: spotdemo4/discord-embedder/.github/actions/init@main
 
       - run: |
           mkdir binaries
@@ -58,7 +58,7 @@ jobs:
     permissions:
       packages: write
     steps:
-      - uses: spotdemo4/nix/.github/actions/init@main
+      - uses: spotdemo4/discord-embedder/.github/actions/init@main
 
       - name: Build & push images
         run: |
