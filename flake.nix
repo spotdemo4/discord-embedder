@@ -125,7 +125,7 @@
             # deps
             dockerTools.caCertificates
             yt-dlp
-            ffmpeg
+            jellyfin-ffmpeg
           ];
           config = {
             Cmd = [
