@@ -1,7 +1,8 @@
 package video
 
 import (
-	"discord-embedder/internal/app"
+	"context"
+	"discord-embedder/internal/config"
 	"errors"
 	"io/fs"
 	"path/filepath"
@@ -18,20 +19,21 @@ type Thumbnail struct {
 }
 
 type Video struct {
-	*app.App
 	File
 
 	ID        string
 	Thumbnail *Thumbnail
 }
 
-func Get(app *app.App, id string) (*Video, error) {
+func Get(ctx context.Context, id string) (*Video, error) {
+	cfg := config.FromContext(ctx)
+
 	// Find video file
 	var videoName string
 	var videoPath string
 	var thumbnailName string
 	var thumbnailPath string
-	err := filepath.WalkDir(app.FilesDir, func(path string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(cfg.FilesDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -66,8 +68,7 @@ func Get(app *app.App, id string) (*Video, error) {
 	}
 
 	v := &Video{
-		App: app,
-		ID:  id,
+		ID: id,
 		File: File{
 			Name: videoName,
 			Path: videoPath,

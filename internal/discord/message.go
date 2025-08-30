@@ -2,6 +2,8 @@ package discord
 
 import (
 	"context"
+	"discord-embedder/internal/config"
+	"discord-embedder/internal/logger"
 	"discord-embedder/internal/video"
 	"fmt"
 	"net/url"
@@ -13,12 +15,14 @@ import (
 
 const loadingEmoji = "<a:bongocat1:499924216490229763>"
 
-func (d *Discord) onMessage(ctx context.Context) any {
+func onMessage(ctx context.Context) any {
 	return func(s *discordgo.Session, i *discordgo.MessageCreate) {
+		cfg := config.FromContext(ctx)
+
 		if i.Author.ID == s.State.User.ID {
 			return
 		}
-		if !slices.Contains(d.DiscordChannelIDs, i.ChannelID) {
+		if !slices.Contains(cfg.DiscordChannelIDs, i.ChannelID) {
 			return
 		}
 		// Check if message is URL
@@ -27,16 +31,17 @@ func (d *Discord) onMessage(ctx context.Context) any {
 			return
 		}
 
+		log := logger.FromContext(ctx)
 		nctx := slogctx.Append(ctx, "message_id", i.Message.ID)
 
 		// Handle message
 		var msg *discordgo.Message
-		msg, err = d.handleMessage(nctx, s, i)
+		msg, err = handleMessage(nctx, s, i)
 		if err != nil {
 			// Respond with error message
 			_, err = s.ChannelMessageSend(i.ChannelID, errMsg(err))
 			if err != nil {
-				d.Logger.ErrorContext(nctx, "could not send video to discord", "error", err)
+				log.ErrorContext(nctx, "could not send video to discord", "error", err)
 			}
 
 			return
@@ -44,54 +49,55 @@ func (d *Discord) onMessage(ctx context.Context) any {
 
 		// Add reaction to new message
 		if err = s.MessageReactionAdd(i.ChannelID, msg.ID, reaction(i.Author.ID)); err != nil {
-			d.Logger.ErrorContext(nctx, "could not add reaction to message", "error", err)
+			log.ErrorContext(nctx, "could not add reaction to message", "error", err)
 		}
 
 		// Delete original message
 		if err = s.ChannelMessageDelete(i.ChannelID, i.Message.ID); err != nil {
-			d.Logger.ErrorContext(nctx, "could not delete original message", "error", err)
+			log.ErrorContext(nctx, "could not delete original message", "error", err)
 		}
 	}
 }
 
-func (d *Discord) handleMessage(
+func handleMessage(
 	ctx context.Context,
 	s *discordgo.Session,
 	i *discordgo.MessageCreate,
 ) (*discordgo.Message, error) {
+	log := logger.FromContext(ctx)
+	cfg := config.FromContext(ctx)
+
 	// Defer delete
 	thinkingMessage, err := s.ChannelMessageSend(i.ChannelID, fmt.Sprintf("%s Thinking...", loadingEmoji))
 	if err != nil {
-		d.Logger.ErrorContext(ctx, "could not send message", "error", err)
+		log.ErrorContext(ctx, "could not send message", "error", err)
 		return nil, err
 	}
 	defer func() {
 		if err = s.ChannelMessageDelete(i.ChannelID, thinkingMessage.ID); err != nil {
-			d.Logger.ErrorContext(ctx, "could not delete message", "error", err)
+			log.ErrorContext(ctx, "could not delete message", "error", err)
 		}
 	}()
-
 	ctx = slogctx.Append(ctx, "url", i.Message.Content)
 
 	// Download video
-	video, err := video.Download(ctx, d.App, i.Message.Content)
+	video, err := video.Download(ctx, i.Message.Content)
 	if err != nil {
-		d.Logger.ErrorContext(ctx, "could not get video", "error", err)
+		log.ErrorContext(ctx, "could not get video", "error", err)
 		return nil, err
 	}
-
 	ctx = slogctx.Append(ctx, "video_id", video.ID)
 
 	// Compress video
-	d.Logger.InfoContext(ctx, "compressing")
+	log.InfoContext(ctx, "compressing")
 	if err = video.Compress(ctx); err != nil {
-		d.Logger.ErrorContext(ctx, "could not compress video", "error", err)
+		log.ErrorContext(ctx, "could not compress video", "error", err)
 		return nil, err
 	}
 
 	// Respond with message
-	d.Logger.InfoContext(ctx, "sending")
-	videoembed := fmt.Sprintf("-# [.](%s/%s)", d.Host, video.ID)
+	log.InfoContext(ctx, "sending")
+	videoembed := fmt.Sprintf("-# [.](%s/%s)", cfg.Host, video.ID)
 	return s.ChannelMessageSend(i.ChannelID, videoembed)
 }
 

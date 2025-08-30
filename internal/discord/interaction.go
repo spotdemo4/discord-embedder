@@ -2,6 +2,8 @@ package discord
 
 import (
 	"context"
+	"discord-embedder/internal/config"
+	"discord-embedder/internal/logger"
 	"discord-embedder/internal/video"
 	"encoding/json"
 	"errors"
@@ -11,12 +13,13 @@ import (
 	slogctx "github.com/veqryn/slog-context"
 )
 
-func (d *Discord) onInteraction(ctx context.Context) any {
+func onInteraction(ctx context.Context) any {
 	return func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		if i.Type != discordgo.InteractionApplicationCommand {
 			return
 		}
 
+		log := logger.FromContext(ctx)
 		data := i.ApplicationCommandData()
 
 		switch data.Name {
@@ -26,11 +29,11 @@ func (d *Discord) onInteraction(ctx context.Context) any {
 			var opts embed
 			err := parseOptions(data.Options, &opts)
 			if err != nil {
-				d.Logger.ErrorContext(nctx, "could not parse options", "error", err)
+				log.ErrorContext(nctx, "could not parse options", "error", err)
 				return
 			}
 
-			err = d.handleEmbed(nctx, s, i, opts)
+			err = handleEmbed(nctx, s, i, opts)
 			if err != nil {
 				// Respond with error message
 				errMsg := errMsg(err)
@@ -38,14 +41,14 @@ func (d *Discord) onInteraction(ctx context.Context) any {
 					Content: &errMsg,
 				})
 				if err != nil {
-					d.Logger.ErrorContext(nctx, "could not respond to interaction", "error", err)
+					log.ErrorContext(nctx, "could not respond to interaction", "error", err)
 				}
 
 				return
 			}
 
 		default:
-			d.Logger.InfoContext(ctx, "unknown command", "cmd", data.Name)
+			log.InfoContext(ctx, "unknown command", "cmd", data.Name)
 		}
 	}
 }
@@ -57,17 +60,20 @@ type embed struct {
 	Spoiler bool   `json:"spoiler"`
 }
 
-func (d *Discord) handleEmbed(
+func handleEmbed(
 	ctx context.Context,
 	s *discordgo.Session,
 	i *discordgo.InteractionCreate,
 	opts embed,
 ) error {
+	log := logger.FromContext(ctx)
+	cfg := config.FromContext(ctx)
+
 	// Defer response
 	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 	}); err != nil {
-		d.Logger.WarnContext(ctx, "could not defer interaction", "error", err)
+		log.WarnContext(ctx, "could not defer interaction", "error", err)
 	}
 
 	// Validate opts
@@ -80,45 +86,45 @@ func (d *Discord) handleEmbed(
 	ctx = slogctx.Append(ctx, "url", opts.URL)
 
 	// Download video
-	video, err := video.Download(ctx, d.App, opts.URL)
+	video, err := video.Download(ctx, opts.URL)
 	if err != nil {
-		d.Logger.ErrorContext(ctx, "could not download video", "error", err)
+		log.ErrorContext(ctx, "could not download video", "error", err)
 		return err
 	}
 	ctx = slogctx.Append(ctx, "video_id", video.ID)
 
 	// Trim video if start and end times are provided
 	if opts.Start != "" && opts.End != "" {
-		d.Logger.InfoContext(ctx, "trimming", "start", opts.Start, "end", opts.End)
+		log.InfoContext(ctx, "trimming", "start", opts.Start, "end", opts.End)
 
 		if err = video.Trim(ctx, opts.Start, opts.End); err != nil {
-			d.Logger.ErrorContext(ctx, "could not trim video", "error", err)
+			log.ErrorContext(ctx, "could not trim video", "error", err)
 			return err
 		}
 	}
 
 	// Compress video
-	d.Logger.InfoContext(ctx, "compressing")
+	log.InfoContext(ctx, "compressing")
 	if err = video.Compress(ctx); err != nil {
-		d.Logger.ErrorContext(ctx, "could not compress video", "error", err)
+		log.ErrorContext(ctx, "could not compress video", "error", err)
 		return err
 	}
 
 	// Surround with spoiler tags if requested
 	var embed string
 	if opts.Spoiler {
-		embed = fmt.Sprintf("-# || [.](%s/%s) ||", d.Host, video.ID)
+		embed = fmt.Sprintf("-# || [.](%s/%s) ||", cfg.Host, video.ID)
 	} else {
-		embed = fmt.Sprintf("-# [.](%s/%s)", d.Host, video.ID)
+		embed = fmt.Sprintf("-# [.](%s/%s)", cfg.Host, video.ID)
 	}
 
 	// Respond with message
-	d.Logger.InfoContext(ctx, "sending")
+	log.InfoContext(ctx, "sending")
 	message, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 		Content: &embed,
 	})
 	if err != nil || message == nil {
-		d.Logger.ErrorContext(ctx, "could not send video to discord", "error", err)
+		log.ErrorContext(ctx, "could not send video to discord", "error", err)
 		return err
 	}
 

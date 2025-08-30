@@ -1,7 +1,7 @@
 package web
 
 import (
-	"discord-embedder/internal/app"
+	"discord-embedder/internal/config"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func fileHandler(a *app.App) func(http.ResponseWriter, *http.Request) {
+func fileHandler(cfg *config.Config) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
@@ -21,7 +21,7 @@ func fileHandler(a *app.App) func(http.ResponseWriter, *http.Request) {
 
 			// Open file
 			fileName := pathItems[2]
-			file, err := os.Open(filepath.Join(a.FilesDir, fileName))
+			file, err := os.Open(filepath.Join(cfg.FilesDir, fileName))
 			if err != nil {
 				http.Error(w, "Not found", http.StatusNotFound)
 				return

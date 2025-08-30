@@ -2,30 +2,23 @@ package discord
 
 import (
 	"context"
-	"discord-embedder/internal/app"
+	"discord-embedder/internal/config"
+	"discord-embedder/internal/logger"
 	"errors"
 	"os/exec"
 
 	"github.com/bwmarrin/discordgo"
 )
 
-type Discord struct {
-	*app.App
+func New(ctx context.Context) error {
+	log := logger.FromContext(ctx)
+	cfg := config.FromContext(ctx)
 
-	session *discordgo.Session
-}
-
-func New(ctx context.Context, a *app.App) error {
 	// Create a new Discord session using the provided bot token
-	session, err := discordgo.New("Bot " + a.DiscordToken)
+	session, err := discordgo.New("Bot " + cfg.DiscordToken)
 	if err != nil {
-		a.Logger.ErrorContext(ctx, "could not create discord session", "error", err)
+		log.ErrorContext(ctx, "could not create discord session", "error", err)
 		return err
-	}
-
-	d := &Discord{
-		a,
-		session,
 	}
 
 	commands := []*discordgo.ApplicationCommand{
@@ -62,10 +55,10 @@ func New(ctx context.Context, a *app.App) error {
 	}
 
 	// Add discord handlers
-	session.AddHandler(d.onInteraction(ctx))
-	session.AddHandler(d.onMessage(ctx))
-	session.AddHandler(d.onReady(commands))
-	session.AddHandler(d.onJoin(commands))
+	session.AddHandler(onInteraction(ctx))
+	session.AddHandler(onMessage(ctx))
+	session.AddHandler(onReady(ctx, commands))
+	session.AddHandler(onJoin(ctx, commands))
 
 	// Add intents
 	session.Identify.Intents = discordgo.IntentsDirectMessages | discordgo.IntentsGuildMessages
@@ -73,21 +66,21 @@ func New(ctx context.Context, a *app.App) error {
 	// Start the websocket connection to Discord
 	err = session.Open()
 	if err != nil {
-		d.Logger.ErrorContext(ctx, "could not open session", "error", err)
+		log.ErrorContext(ctx, "could not open session", "error", err)
 		return err
 	}
 
 	// Wait for context cancellation
-	d.Logger.InfoContext(ctx, "discord session started")
+	log.InfoContext(ctx, "discord session started")
 	<-ctx.Done()
 
 	// Close the session
 	if err = session.Close(); err != nil {
-		d.Logger.ErrorContext(ctx, "could not close session", "error", err)
+		log.ErrorContext(ctx, "could not close session", "error", err)
 		return err
 	}
 
-	d.Logger.InfoContext(ctx, "discord session closed")
+	log.InfoContext(ctx, "discord session closed")
 	return nil
 }
 

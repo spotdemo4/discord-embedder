@@ -2,7 +2,8 @@ package web
 
 import (
 	"context"
-	"discord-embedder/internal/app"
+	"discord-embedder/internal/config"
+	"discord-embedder/internal/logger"
 	"embed"
 	"errors"
 	"fmt"
@@ -10,17 +11,19 @@ import (
 	"time"
 )
 
-func New(ctx context.Context, a *app.App, home embed.FS) error {
+func New(ctx context.Context, home embed.FS) error {
+	cfg := config.FromContext(ctx)
+	log := logger.FromContext(ctx)
 	done := make(chan bool, 1)
 
 	// Create server handlers
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", homeHandler(ctx, a, home))
-	mux.HandleFunc("/files/", fileHandler(a))
+	mux.HandleFunc("/", homeHandler(ctx, home))
+	mux.HandleFunc("/files/", fileHandler(cfg))
 
 	// Create HTTP server
 	server := &http.Server{
-		Addr:              fmt.Sprintf(":%d", a.Port),
+		Addr:              fmt.Sprintf(":%d", cfg.Port),
 		Handler:           mux,
 		ReadTimeout:       5 * time.Second,
 		ReadHeaderTimeout: 5 * time.Second,
@@ -35,10 +38,10 @@ func New(ctx context.Context, a *app.App, home embed.FS) error {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if err := server.Shutdown(shutdownCtx); err != nil {
-			a.Logger.Error("could not gracefully shutdown server, closing", "error", err)
+			log.Error("could not gracefully shutdown server, closing", "error", err)
 
 			if err = server.Close(); err != nil {
-				a.Logger.Error("could not close server", "error", err)
+				log.Error("could not close server", "error", err)
 			}
 		}
 

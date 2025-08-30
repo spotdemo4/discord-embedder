@@ -2,6 +2,8 @@ package video
 
 import (
 	"context"
+	"discord-embedder/internal/config"
+	"discord-embedder/internal/logger"
 	"fmt"
 	"io"
 	"os"
@@ -11,10 +13,12 @@ import (
 
 // Compress compresses the video to reduce file size and converts to h264 mp4.
 func (v *Video) Compress(ctx context.Context) error {
-	tempPath := filepath.Join(v.TempDir, v.Name)
+	log := logger.FromContext(ctx)
+	cfg := config.FromContext(ctx)
+	tempPath := filepath.Join(cfg.TempDir, v.Name)
 
 	var cmd *exec.Cmd
-	if v.App.Quicksync {
+	if cfg.Quicksync {
 		cmd = exec.CommandContext(ctx, "ffmpeg",
 			"-hwaccel", "qsv",
 			"-hwaccel_output_format", "qsv",
@@ -33,12 +37,15 @@ func (v *Video) Compress(ctx context.Context) error {
 			tempPath,
 		)
 	}
-	if err := cmd.Run(); err != nil {
+	out, err := cmd.Output()
+	if err != nil {
 		return err
 	}
 
+	log.DebugContext(ctx, "ffmpeg", "output", string(out))
+
 	// Delete original
-	err := os.Remove(v.Path)
+	err = os.Remove(v.Path)
 	if err != nil {
 		return err
 	}
@@ -54,15 +61,20 @@ func (v *Video) Compress(ctx context.Context) error {
 
 // Trim video to start and end time.
 func (v *Video) Trim(ctx context.Context, start string, end string) error {
-	tempPath := filepath.Join(v.TempDir, v.Name)
+	log := logger.FromContext(ctx)
+	cfg := config.FromContext(ctx)
+	tempPath := filepath.Join(cfg.TempDir, v.Name)
 
 	cmd := exec.CommandContext(ctx, "ffmpeg", "-ss", start, "-to", end, "-i", v.Path, tempPath)
-	if err := cmd.Run(); err != nil {
+	out, err := cmd.Output()
+	if err != nil {
 		return err
 	}
 
+	log.DebugContext(ctx, "ffmpeg", "output", string(out))
+
 	// Delete original
-	err := os.Remove(v.Path)
+	err = os.Remove(v.Path)
 	if err != nil {
 		return err
 	}
@@ -78,13 +90,18 @@ func (v *Video) Trim(ctx context.Context, start string, end string) error {
 
 // thumbnail generates a thumbnail for video.
 func (v *Video) thumbnail(ctx context.Context) error {
+	log := logger.FromContext(ctx)
+	cfg := config.FromContext(ctx)
 	name := fmt.Sprintf("%s.jpeg", v.ID)
-	path := filepath.Join(v.FilesDir, name)
+	path := filepath.Join(cfg.FilesDir, name)
 
 	cmd := exec.CommandContext(ctx, "ffmpeg", "-i", v.Path, "-update", "true", "-vframes:v", "1", path)
-	if err := cmd.Run(); err != nil {
+	out, err := cmd.Output()
+	if err != nil {
 		return err
 	}
+
+	log.DebugContext(ctx, "ffmpeg", "output", string(out))
 
 	t := Thumbnail{
 		File: File{

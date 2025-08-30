@@ -2,7 +2,7 @@ package web
 
 import (
 	"context"
-	"discord-embedder/internal/app"
+	"discord-embedder/internal/config"
 	"discord-embedder/internal/video"
 	"embed"
 	"fmt"
@@ -18,12 +18,11 @@ type Page struct {
 	Height   string
 }
 
-func homeHandler(
-	ctx context.Context,
-	app *app.App,
-	home embed.FS,
-) func(http.ResponseWriter, *http.Request) {
+func homeHandler(ctx context.Context, home embed.FS) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		cfg := config.FromContext(ctx)
+
+		// Handle request
 		switch r.Method {
 		case http.MethodGet:
 			pathItems := strings.Split(r.URL.Path, "/") // /{id}
@@ -36,7 +35,7 @@ func homeHandler(
 			id := pathItems[1]
 
 			// Find video file
-			file, err := video.Get(app, id)
+			file, err := video.Get(ctx, id)
 			if err != nil {
 				http.Error(w, "Not found", http.StatusNotFound)
 				return
@@ -51,8 +50,8 @@ func homeHandler(
 
 			// Generate page
 			page := Page{
-				ImageURL: fmt.Sprintf("%s/files/%s", app.Host, file.Thumbnail.Name),
-				VideoURL: fmt.Sprintf("%s/files/%s", app.Host, file.Name),
+				ImageURL: fmt.Sprintf("%s/files/%s", cfg.Host, file.Thumbnail.Name),
+				VideoURL: fmt.Sprintf("%s/files/%s", cfg.Host, file.Name),
 				Width:    width,
 				Height:   height,
 			}

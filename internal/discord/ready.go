@@ -1,18 +1,25 @@
 package discord
 
 import (
+	"context"
+	"discord-embedder/internal/config"
+	"discord-embedder/internal/logger"
+
 	"github.com/bwmarrin/discordgo"
 )
 
-func (d *Discord) onReady(commands []*discordgo.ApplicationCommand) interface{} {
+func onReady(ctx context.Context, commands []*discordgo.ApplicationCommand) interface{} {
 	return func(s *discordgo.Session, r *discordgo.Ready) {
-		d.Logger.Info("Logged in", "user", r.User)
+		log := logger.FromContext(ctx)
+		cfg := config.FromContext(ctx)
+
+		log.InfoContext(ctx, "Logged in", "user", r.User)
 
 		for _, g := range r.Guilds {
 			// Register commands
-			_, err := s.ApplicationCommandBulkOverwrite(d.DiscordApplicationID, g.ID, commands)
+			_, err := s.ApplicationCommandBulkOverwrite(cfg.DiscordApplicationID, g.ID, commands)
 			if err != nil {
-				d.Logger.Warn("could not register commands for guild", "id", g.ID, "error", err)
+				log.WarnContext(ctx, "could not register commands for guild", "id", g.ID, "error", err)
 			}
 		}
 	}

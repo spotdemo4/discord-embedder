@@ -2,11 +2,11 @@ package main
 
 import (
 	"context"
-	"discord-embedder/internal/app"
+	"discord-embedder/internal/config"
 	"discord-embedder/internal/discord"
+	"discord-embedder/internal/logger"
 	"discord-embedder/internal/web"
 	"embed"
-	"log"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -21,35 +21,42 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 
-	a, err := app.New()
+	// Setup logger
+	log := logger.New()
+	ctx = logger.WithLogger(ctx, log)
+
+	// Get config
+	cfg, err := config.New(ctx)
 	if err != nil {
-		log.Fatalf("could not initialize app: %s", err)
+		log.Error("could not load config", "error", err)
+		os.Exit(1)
 	}
+	ctx = config.WithConfig(ctx, cfg)
 
 	// Check if yt-dlp is installed
 	if _, err = exec.LookPath("yt-dlp"); err != nil {
-		a.Logger.Error("yt-dlp is not installed", "error", err)
+		log.Error("yt-dlp is not installed", "error", err)
 		os.Exit(1)
 	}
 
 	// Check if ffmpeg is installed
 	if _, err = exec.LookPath("ffmpeg"); err != nil {
-		a.Logger.Error("ffmpeg is not installed", "error", err)
+		log.Error("ffmpeg is not installed", "error", err)
 		os.Exit(1)
 	}
 
 	// Check if ffprobe is installed
 	if _, err = exec.LookPath("ffprobe"); err != nil {
-		a.Logger.Error("ffprobe is not installed", "error", err)
+		log.Error("ffprobe is not installed", "error", err)
 		os.Exit(1)
 	}
 
 	// Create Discord connection
 	wg.Add(1) // TODO: replace with wg.Go() when moved to Go 1.25
 	go func() {
-		err = discord.New(ctx, a)
+		err = discord.New(ctx)
 		if err != nil {
-			a.Logger.Error("problem with discord", "error", err)
+			log.Error("problem with discord", "error", err)
 		}
 
 		wg.Done()
@@ -58,9 +65,9 @@ func main() {
 	// Create web server
 	wg.Add(1) // TODO: replace with wg.Go() when moved to Go 1.25
 	go func() {
-		err = web.New(ctx, a, home)
+		err = web.New(ctx, home)
 		if err != nil {
-			a.Logger.Error("problem running web server", "error", err)
+			log.Error("problem running web server", "error", err)
 		}
 
 		wg.Done()
@@ -71,7 +78,7 @@ func main() {
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		sig := <-sigs
-		a.Logger.Info("exiting", "signal", sig)
+		log.Info("exiting", "signal", sig)
 
 		// Cancel context
 		cancel()
@@ -79,5 +86,5 @@ func main() {
 
 	// Wait for all goroutines to finish
 	wg.Wait()
-	a.Logger.Info("done")
+	log.Info("done")
 }
