@@ -119,18 +119,14 @@
           name = "${default.pname}";
           tag = "${default.version}";
           created = "now";
+          fromImage = pkgs.dockerTools.pullImage {
+            imageName = "linuxserver/ffmpeg";
+            imageDigest = "sha256:9d7e80710e7f11a276a4185f07e5e81db26fc7027ea70d1591f93ddf58e36ab4";
+            sha256 = "sha256-8AFBF1X9517v12K6TyQF3IR2YeIksHFYuSXt4JKgIpU=";
+          };
           contents = with pkgs; [
             default
-
-            # deps
-            dockerTools.caCertificates
             yt-dlp
-            jellyfin-ffmpeg
-
-            # intel
-            vpl-gpu-rt # qsv
-            intel-media-driver # vaapi
-            intel-compute-runtime # opencl
           ];
           config = {
             Cmd = [
