@@ -1,6 +1,15 @@
 {
   description = "discord embedder";
 
+  nixConfig = {
+    extra-substituters = [
+      "https://trevnur.cachix.org"
+    ];
+    extra-trusted-public-keys = [
+      "trevnur.cachix.org-1:hBd15IdszwT52aOxdKs5vNTbq36emvEeGqpb25Bkq6o="
+    ];
+  };
+
   inputs = {
     systems.url = "systems";
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";

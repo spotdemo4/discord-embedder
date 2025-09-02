@@ -20,6 +20,8 @@ jobs:
           app-id: ${{ vars.CLIENT_ID }}
           private-key: ${{ secrets.PRIVATE_KEY }}
 
+      - uses: nicknovitski/nix-develop@9be7cfb4b10451d3390a75dc18ad0465bed4932a # v1.2.1
+
       - name: Renovate
         env:
           RENOVATE_CONFIG_FILE: .github/renovate-global.json
