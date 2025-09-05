@@ -1,0 +1,66 @@
+name: build
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: spotdemo4/discord-embedder/.github/actions/init@main
+
+      - run: |
+          mkdir binaries
+
+          nix build .#linux-amd64
+          tar czf discord-embedder-linux-amd64.tar.gz -C result/bin discord-embedder
+          mv discord-embedder-linux-amd64.tar.gz binaries
+
+          nix build .#linux-arm64
+          tar czf discord-embedder-linux-arm64.tar.gz -C result/bin discord-embedder
+          mv discord-embedder-linux-arm64.tar.gz binaries
+
+          nix build .#linux-arm
+          tar czf discord-embedder-linux-arm.tar.gz -C result/bin discord-embedder
+          mv discord-embedder-linux-arm.tar.gz binaries
+
+          nix build .#darwin-arm64
+          tar czf discord-embedder-darwin-arm64.tar.gz -C result/bin discord-embedder
+          mv discord-embedder-darwin-arm64.tar.gz binaries
+
+          nix build .#windows-amd64
+          zip -j discord-embedder-windows-amd64.zip result/bin/discord-embedder.exe
+          mv discord-embedder-windows-amd64.zip binaries
+
+      - uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8 # v2.3.2
+        with:
+          files: |-
+            binaries/*
+
+  package:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - uses: spotdemo4/discord-embedder/.github/actions/init@main
+
+      - uses: nicknovitski/nix-develop@9be7cfb4b10451d3390a75dc18ad0465bed4932a # v1.2.1
+
+      - name: Build & push images
+        run: |
+          nix build .#image
+
+          TAG=${{ github.ref_name }}
+          VERSION=${TAG#v}
+
+          ./result | gzip --fast | skopeo copy \
+            --dest-creds=${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} \
+            docker-archive:/dev/stdin \
+            docker://ghcr.io/spotdemo4/discord-embedder:$VERSION
