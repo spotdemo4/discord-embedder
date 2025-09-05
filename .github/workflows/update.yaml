@@ -2,7 +2,7 @@ name: update
 
 on:
   schedule:
-    - cron: '0 0 * * *'
+    - cron: '9 9 * * *'
   workflow_dispatch:
 
 permissions:
@@ -14,13 +14,13 @@ jobs:
     steps:
       - uses: spotdemo4/discord-embedder/.github/actions/init@main
 
+      - uses: nicknovitski/nix-develop@9be7cfb4b10451d3390a75dc18ad0465bed4932a # v1.2.1
+
       - uses: actions/create-github-app-token@a8d616148505b5069dccd32f177bb87d7f39123b # v2.1.1
         id: token
         with:
           app-id: ${{ vars.CLIENT_ID }}
           private-key: ${{ secrets.PRIVATE_KEY }}
-
-      - uses: nicknovitski/nix-develop@9be7cfb4b10451d3390a75dc18ad0465bed4932a # v1.2.1
 
       - name: Renovate
         env:
