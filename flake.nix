@@ -42,9 +42,6 @@
     in rec {
       devShells.default = pkgs.mkShell {
         packages = with pkgs; [
-          git
-          pkgs.nur.repos.trev.bumper
-
           # Go
           go
           gotools
@@ -56,8 +53,10 @@
           # Nix
           alejandra
           flake-checker
+          nix-update
 
           # Actions
+          semantic-release
           action-validator
           prettier
           skopeo
