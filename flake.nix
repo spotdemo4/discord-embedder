@@ -39,6 +39,7 @@
         inherit system;
         overlays = [nur.overlays.default];
       };
+      trev = pkgs.nur.repos.trev;
     in rec {
       devShells.default = pkgs.mkShell {
         packages = with pkgs; [
@@ -53,20 +54,18 @@
           # Nix
           alejandra
           flake-checker
-          nix-update
 
           # Actions
-          semantic-release
-          action-validator
-          prettier
           skopeo
-          pkgs.nur.repos.trev.renovate
+          prettier
+          action-validator
+          trev.renovate
         ];
-        shellHook = pkgs.nur.repos.trev.shellhook.ref;
+        shellHook = trev.shellhook.ref;
       };
 
       checks =
-        pkgs.nur.repos.trev.lib.mkChecks {
+        trev.lib.mkChecks {
           lint = {
             src = ./.;
             deps = with pkgs; [
@@ -75,22 +74,21 @@
               alejandra
               prettier
               action-validator
-              pkgs.nur.repos.trev.renovate
+              trev.renovate
             ];
             script = ''
               golangci-lint run ./...
               alejandra -c .
               prettier --check .
-              action-validator .github/workflows/*
-              renovate-config-validator
-              renovate-config-validator .github/renovate-global.json
+              action-validator .github/**/*.yaml
+              renovate-config-validator .github/renovate*.json
             '';
           };
 
           scan = {
             src = ./.;
             deps = [
-              pkgs.nur.repos.trev.opengrep
+              trev.opengrep
             ];
             script = ''
               opengrep scan --quiet --error --config="${semgrep-rules}/go"
@@ -104,7 +102,7 @@
           shell = devShells.default;
         };
 
-      packages = with pkgs.nur.repos.trev.lib; rec {
+      packages = with trev.lib; rec {
         default = pkgs.buildGoModule (finalAttrs: {
           pname = "discord-embedder";
           version = "0.1.9";
