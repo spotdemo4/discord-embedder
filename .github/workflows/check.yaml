@@ -1,15 +1,21 @@
 name: check
 
 on:
+  push:
+    branches: ['main']
   pull_request:
     branches: ['main']
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  check:
+  flake:
     runs-on: ubuntu-latest
     steps:
       - uses: spotdemo4/discord-embedder/.github/actions/init@main
