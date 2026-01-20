@@ -1,28 +1,30 @@
 {
-	"editor.formatOnSave": true,
+  "editor.formatOnSave": true,
+  "files.associations": {
+    "renovate.json": "jsonc",
+    ".envrc.project": "dotenv"
+  },
 
-	// Go
-	"go.lintTool": "golangci-lint-v2",
-	"go.lintFlags": ["--path-mode=abs"],
-	"go.formatTool": "custom",
-	"go.alternateTools": {
-		"customFormatter": "golangci-lint-v2"
-	},
-	"go.formatFlags": ["fmt", "--stdin"],
-	"gopls": { "ui.semanticTokens": true },
-	"[go]": {
-		"editor.defaultFormatter": "golang.go"
-	},
+  // go
+  "go.lintTool": "revive",
+  "go.lintFlags": ["-config=${workspaceFolder}/revive.toml"],
+  "gopls": { "ui.semanticTokens": true },
+  "[go]": {
+    "editor.defaultFormatter": "golang.go"
+  },
 
-	// Nix
-	"nix.enableLanguageServer": true,
-	"nix.serverPath": "nixd",
-	"nix.formatterPath": "alejandra",
+  // nix
+  "nix.enableLanguageServer": true,
+  "nix.serverPath": "nixd",
+  "[nix]": {
+    "editor.defaultFormatter": "jnoortheen.nix-ide"
+  },
 
-	// Prettier
-	"editor.defaultFormatter": "esbenp.prettier-vscode",
+  // toml
+  "[toml]": {
+    "editor.defaultFormatter": "tombi-toml.tombi"
+  },
 
-	"files.associations": {
-		".semgrepignore": "ignore"
-	}
+  // actions
+  "editor.defaultFormatter": "prettier.prettier-vscode"
 }

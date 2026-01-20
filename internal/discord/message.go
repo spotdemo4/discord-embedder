@@ -81,23 +81,23 @@ func handleMessage(
 	ctx = slogctx.Append(ctx, "url", i.Message.Content)
 
 	// Download video
-	video, err := video.Download(ctx, i.Message.Content)
+	v, err := video.Download(ctx, i.Message.Content)
 	if err != nil {
 		log.ErrorContext(ctx, "could not get video", "error", err)
 		return nil, err
 	}
-	ctx = slogctx.Append(ctx, "video_id", video.ID)
+	ctx = slogctx.Append(ctx, "video_id", v.ID)
 
 	// Compress video
 	log.InfoContext(ctx, "compressing")
-	if err = video.Compress(ctx); err != nil {
+	if err = v.Compress(ctx); err != nil {
 		log.ErrorContext(ctx, "could not compress video", "error", err)
 		return nil, err
 	}
 
 	// Respond with message
 	log.InfoContext(ctx, "sending")
-	videoembed := fmt.Sprintf("-# [.](%s/%s)", cfg.Host, video.ID)
+	videoembed := fmt.Sprintf("-# [.](%s/%s)", cfg.Host, v.ID)
 	return s.ChannelMessageSend(i.ChannelID, videoembed)
 }
 
@@ -130,7 +130,8 @@ func reaction(authorID string) string {
 	// Shane
 	case "107549180053950464":
 		return "shen:692279372765200424"
-	}
 
-	return ""
+	default:
+		return "👍"
+	}
 }

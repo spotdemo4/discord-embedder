@@ -86,18 +86,18 @@ func handleEmbed(
 	ctx = slogctx.Append(ctx, "url", opts.URL)
 
 	// Download video
-	video, err := video.Download(ctx, opts.URL)
+	v, err := video.Download(ctx, opts.URL)
 	if err != nil {
 		log.ErrorContext(ctx, "could not download video", "error", err)
 		return err
 	}
-	ctx = slogctx.Append(ctx, "video_id", video.ID)
+	ctx = slogctx.Append(ctx, "video_id", v.ID)
 
 	// Trim video if start and end times are provided
 	if opts.Start != "" && opts.End != "" {
 		log.InfoContext(ctx, "trimming", "start", opts.Start, "end", opts.End)
 
-		if err = video.Trim(ctx, opts.Start, opts.End); err != nil {
+		if err = v.Trim(ctx, opts.Start, opts.End); err != nil {
 			log.ErrorContext(ctx, "could not trim video", "error", err)
 			return err
 		}
@@ -105,7 +105,7 @@ func handleEmbed(
 
 	// Compress video
 	log.InfoContext(ctx, "compressing")
-	if err = video.Compress(ctx); err != nil {
+	if err = v.Compress(ctx); err != nil {
 		log.ErrorContext(ctx, "could not compress video", "error", err)
 		return err
 	}
@@ -113,9 +113,9 @@ func handleEmbed(
 	// Surround with spoiler tags if requested
 	var embed string
 	if opts.Spoiler {
-		embed = fmt.Sprintf("-# || [.](%s/%s) ||", cfg.Host, video.ID)
+		embed = fmt.Sprintf("-# || [.](%s/%s) ||", cfg.Host, v.ID)
 	} else {
-		embed = fmt.Sprintf("-# [.](%s/%s)", cfg.Host, video.ID)
+		embed = fmt.Sprintf("-# [.](%s/%s)", cfg.Host, v.ID)
 	}
 
 	// Respond with message

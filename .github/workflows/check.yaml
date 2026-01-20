@@ -1,23 +1,27 @@
 name: check
 
 on:
-  push:
-    branches: ['main']
   pull_request:
-    branches: ['main']
+    branches: ["main"]
+  push:
+    branches: ["main"]
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.head_ref }}
 
 permissions:
   contents: read
 
 jobs:
-  flake:
-    runs-on: ubuntu-latest
+  check:
+    if: ${{ ! startsWith(github.event.head_commit.message, 'bump:') }}
+    runs-on: ubuntu-24.04
     steps:
-      - uses: spotdemo4/discord-embedder/.github/actions/init@main
+      - name: Initialize
+        id: init
+        uses: spotdemo4/nix-init@0a2f62e3b132c09b144b6957976f538f79fc81a2 # v1.17.1
 
-      - run: nix flake check -L
+      - name: Run checks
+        if: ${{ steps.init.outputs.duplicate != 'true' }}
+        run: nix flake check

@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+const timeout = 5 * time.Second
+
 func New(ctx context.Context, home embed.FS) error {
 	cfg := config.FromContext(ctx)
 	log := logger.FromContext(ctx)
@@ -25,10 +27,10 @@ func New(ctx context.Context, home embed.FS) error {
 	server := &http.Server{
 		Addr:              fmt.Sprintf(":%d", cfg.Port),
 		Handler:           mux,
-		ReadTimeout:       5 * time.Second,
-		ReadHeaderTimeout: 5 * time.Second,
-		WriteTimeout:      10 * time.Second,
-		IdleTimeout:       15 * time.Second,
+		ReadTimeout:       timeout,
+		ReadHeaderTimeout: timeout,
+		WriteTimeout:      timeout * 2,
+		IdleTimeout:       timeout * 2,
 	}
 
 	// Stop server on context cancel

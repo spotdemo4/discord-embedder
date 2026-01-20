@@ -8,7 +8,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-func onReady(ctx context.Context, commands []*discordgo.ApplicationCommand) interface{} {
+func onReady(ctx context.Context, commands []*discordgo.ApplicationCommand) any {
 	return func(s *discordgo.Session, r *discordgo.Ready) {
 		log := logger.FromContext(ctx)
 		cfg := config.FromContext(ctx)

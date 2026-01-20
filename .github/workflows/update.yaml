@@ -2,7 +2,7 @@ name: update
 
 on:
   schedule:
-    - cron: '9 9 * * *'
+    - cron: "0 7-13 * * *" # once an hour from 07:00 to 13:00 UTC
   workflow_dispatch:
 
 permissions:
@@ -10,20 +10,19 @@ permissions:
 
 jobs:
   renovate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: spotdemo4/discord-embedder/.github/actions/init@main
-
-      - uses: nicknovitski/nix-develop@9be7cfb4b10451d3390a75dc18ad0465bed4932a # v1.2.1
-
-      - uses: actions/create-github-app-token@a8d616148505b5069dccd32f177bb87d7f39123b # v2.1.1
-        id: token
+      - name: Initialize
+        id: init
+        uses: spotdemo4/nix-init@0a2f62e3b132c09b144b6957976f538f79fc81a2 # v1.17.1
         with:
-          app-id: ${{ vars.CLIENT_ID }}
-          private-key: ${{ secrets.PRIVATE_KEY }}
+          app_id: ${{ vars.CLIENT_ID }}
+          app_key: ${{ secrets.PRIVATE_KEY }}
+          shell: update
 
       - name: Renovate
-        env:
-          RENOVATE_CONFIG_FILE: .github/renovate-global.json
-          RENOVATE_TOKEN: ${{ steps.token.outputs.token }}
         run: renovate
+        env:
+          RENOVATE_CONFIG_FILE: .github/renovate.json
+          RENOVATE_TOKEN: ${{ steps.init.outputs.token }}
+          LOG_LEVEL: ${{ runner.debug == '1' && 'debug' || 'info' }}

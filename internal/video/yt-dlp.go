@@ -92,7 +92,7 @@ func ytdlp(ctx context.Context, link *url.URL, id string) ([]byte, error) {
 	return cmd.Output()
 }
 
-func creds(ctx context.Context, domain string) (string, string) {
+func creds(ctx context.Context, domain string) (username string, password string) {
 	cfg := config.FromContext(ctx)
 
 	switch domain {

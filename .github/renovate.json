@@ -1,22 +1,39 @@
 {
-	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
-	"extends": ["config:recommended", "group:allDigest"],
-	"lockFileMaintenance": {
-		"enabled": true,
-		"automerge": true
-	},
-	"nix": {
-		"enabled": true
-	},
-	"packageRules": [
-		{
-			"matchUpdateTypes": ["minor", "patch", "pin", "digest"],
-			"automerge": true
-		},
-		{
-			"matchManagers": ["github-actions"],
-			"matchPackageNames": ["*"],
-			"groupName": "GitHub Actions"
-		}
-	]
+  "$schema": "https://docs.renovatebot.com/renovate-global-schema.json",
+
+  // self-hosted
+  "onboarding": false,
+  "requireConfig": "ignored",
+  "platform": "github",
+  "repositories": ["spotdemo4/discord-embedder"],
+
+  // repository
+  "extends": ["config:recommended"],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "automerge": true,
+    "schedule": ["* * * * 0"] // sunday
+  },
+  "nix": {
+    "enabled": true
+  },
+  "packageRules": [
+    {
+      "automerge": true,
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"]
+    },
+    {
+      "groupName": "nix inputs",
+      "matchManagers": ["nix"]
+    },
+    {
+      "groupName": "github actions",
+      "matchManagers": ["github-actions"]
+    },
+    {
+      "groupName": "go modules",
+      "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["patch", "pin", "digest"]
+    }
+  ]
 }

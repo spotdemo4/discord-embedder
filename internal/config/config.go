@@ -136,8 +136,9 @@ func FromContext(ctx context.Context) *Config {
 		return &Config{}
 	}
 
-	if logger, ok := ctx.Value(configKey{}).(*Config); ok {
-		return logger
+	if l, ok := ctx.Value(configKey{}).(*Config); ok {
+		return l
 	}
+
 	return &Config{}
 }

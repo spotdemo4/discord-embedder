@@ -27,7 +27,7 @@ func (v *Video) Codec(ctx context.Context) (string, error) {
 }
 
 // Resolution returns the width and height of the video.
-func (v *Video) Resolution(ctx context.Context) (string, string, error) {
+func (v *Video) Resolution(ctx context.Context) (width string, height string, err error) {
 	cmd := exec.CommandContext(ctx,
 		"ffprobe",
 		"-v", "error",

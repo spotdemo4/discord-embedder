@@ -2,27 +2,42 @@ name: vulnerable
 
 on:
   schedule:
-    - cron: '9 9 * * 0'
+    - cron: "0 9 * * 0" # every Sunday at 09:00 UTC
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  govulncheck:
-    runs-on: ubuntu-latest
+  go:
+    runs-on: ubuntu-24.04
     steps:
-      - uses: spotdemo4/discord-embedder/.github/actions/init@main
+      - name: Initialize
+        uses: spotdemo4/nix-init@0a2f62e3b132c09b144b6957976f538f79fc81a2 # v1.17.1
+        with:
+          shell: vulnerable
 
-      - uses: nicknovitski/nix-develop@9be7cfb4b10451d3390a75dc18ad0465bed4932a # v1.2.1
+      - name: Run govulncheck
+        run: govulncheck ./...
 
-      - run: govulncheck ./...
-
-  flake:
-    runs-on: ubuntu-latest
+  nix:
+    runs-on: ubuntu-24.04
     steps:
-      - uses: spotdemo4/discord-embedder/.github/actions/init@main
+      - name: Initialize
+        uses: spotdemo4/nix-init@0a2f62e3b132c09b144b6957976f538f79fc81a2 # v1.17.1
+        with:
+          shell: vulnerable
 
-      - uses: nicknovitski/nix-develop@9be7cfb4b10451d3390a75dc18ad0465bed4932a # v1.2.1
+      - name: Run flake-checker
+        run: flake-checker -f
 
-      - run: flake-checker -f
+  actions:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Initialize
+        uses: spotdemo4/nix-init@0a2f62e3b132c09b144b6957976f538f79fc81a2 # v1.17.1
+        with:
+          shell: vulnerable
+
+      - name: Run octoscan
+        run: octoscan scan .github
