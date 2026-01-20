@@ -1,10 +1,11 @@
-.env
-/docker-compose.*
+/.env
+/.envrc
+/docker-compose*
 
-# Build
+# build
 /build/
 /tmp/
 
-# Nix
+# nix
 /result*
 /.direnv/
