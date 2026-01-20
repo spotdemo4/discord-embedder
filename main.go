@@ -52,26 +52,20 @@ func main() {
 	}
 
 	// Create Discord connection
-	wg.Add(1) // TODO: replace with wg.Go() when moved to Go 1.25
-	go func() {
+	wg.Go(func() {
 		err = discord.New(ctx)
 		if err != nil {
 			log.Error("problem with discord", "error", err)
 		}
-
-		wg.Done()
-	}()
+	})
 
 	// Create web server
-	wg.Add(1) // TODO: replace with wg.Go() when moved to Go 1.25
-	go func() {
+	wg.Go(func() {
 		err = web.New(ctx, home)
 		if err != nil {
 			log.Error("problem running web server", "error", err)
 		}
-
-		wg.Done()
-	}()
+	})
 
 	// Gracefully shutdown on SIGINT or SIGTERM
 	sigs := make(chan os.Signal, 1)
