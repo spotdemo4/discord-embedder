@@ -238,19 +238,6 @@
               ];
             };
 
-            nativeBuildInputs = with pkgs; [
-              makeWrapper
-            ];
-
-            buildInputs = with pkgs; [
-              yt-dlp
-            ];
-
-            postFixup = ''
-              wrapProgram $out/bin/discord-embedder \
-                --set PATH "${pkgs.yt-dlp}/bin:\$PATH"
-            '';
-
             goSum = finalAttrs.src + "go.sum";
             vendorHash = null;
             env.CGO_ENABLED = 0;
@@ -271,8 +258,8 @@
 
             fromImage = pkgs.image.ffmpeg;
             contents = with pkgs; [
-              dockerTools.caCertificates
               packages.default
+              yt-dlp
             ];
 
             created = "now";
