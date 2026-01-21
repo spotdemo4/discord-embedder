@@ -39,6 +39,7 @@
           overlays = [
             trev.overlays.packages
             trev.overlays.libs
+            trev.overlays.images
           ];
         };
         fs = pkgs.lib.fileset;
@@ -242,13 +243,12 @@
             ];
 
             buildInputs = with pkgs; [
-              jellyfin-ffmpeg
               yt-dlp
             ];
 
             postFixup = ''
               wrapProgram $out/bin/discord-embedder \
-                --set PATH "${pkgs.jellyfin-ffmpeg}/bin:${pkgs.yt-dlp}/bin:\$PATH"
+                --set PATH "${pkgs.yt-dlp}/bin:\$PATH"
             '';
 
             goSum = finalAttrs.src + "go.sum";
@@ -269,6 +269,7 @@
             name = packages.default.pname;
             tag = packages.default.version;
 
+            fromImage = pkgs.image.ffmpeg;
             contents = with pkgs; [
               dockerTools.caCertificates
               packages.default
@@ -279,6 +280,13 @@
 
             config = {
               Cmd = [ "${pkgs.lib.meta.getExe packages.default}" ];
+              Labels = {
+                "org.opencontainers.image.source" = packages.default.meta.homepage;
+                "org.opencontainers.image.version" = packages.default.version;
+                "org.opencontainers.image.licenses" = packages.default.meta.license.spdxId;
+                "org.opencontainers.image.title" = packages.default.pname;
+                "org.opencontainers.image.description" = packages.default.meta.description;
+              };
             };
           };
         };
