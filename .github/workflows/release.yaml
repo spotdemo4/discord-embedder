@@ -19,15 +19,13 @@ jobs:
       - name: Initialize
         uses: spotdemo4/nix-init@ca5cd7aeba7c60c3542ed052aab356138c643d58 # v1.18.0
         with:
-          app_id: ${{ vars.CLIENT_ID }}
-          app_key: ${{ secrets.PRIVATE_KEY }}
           fetch_depth: 0
           shell: release
 
       - name: Run nix-release
         run: nix-flake-release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REGISTRY: ghcr.io
           REGISTRY_USERNAME: ${{ github.actor }}
           REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
