@@ -20,7 +20,7 @@ jobs:
       - name: Run govulncheck
         run: govulncheck ./...
 
-  nix:
+  flake:
     runs-on: ubuntu-24.04
     steps:
       - name: Initialize

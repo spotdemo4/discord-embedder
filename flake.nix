@@ -100,7 +100,7 @@
               go
               govulncheck
 
-              # nix
+              # flake
               flake-checker
 
               # actions
