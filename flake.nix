@@ -3,10 +3,10 @@
 
   nixConfig = {
     extra-substituters = [
-      "https://cache.trev.zip/nur"
+      "https://nix.trev.zip"
     ];
     extra-trusted-public-keys = [
-      "nur:70xGHUW1+1b8FqBchldaunN//pZNVo6FKuPL4U/n844="
+      "trev:I39N/EsnHkvfmsbx8RUW+ia5dOzojTQNCTzKYij1chU="
     ];
   };
 
@@ -54,17 +54,18 @@
               go
               gotools
               gopls
+
+              # lint
               revive
+
+              # format
+              nixfmt
+              prettier
 
               # util
               air
               bumper
-
-              # nix
-              nixfmt
-
-              # actions
-              prettier
+              flake-release
             ];
           };
 
@@ -78,7 +79,7 @@
           release = pkgs.mkShell {
             name = "release";
             packages = with pkgs; [
-              nix-flake-release
+              flake-release
             ];
           };
 
@@ -273,11 +274,11 @@
             config = {
               Cmd = [ "${pkgs.lib.meta.getExe packages.default}" ];
               Labels = {
+                "org.opencontainers.image.title" = packages.default.pname;
+                "org.opencontainers.image.description" = packages.default.meta.description;
                 "org.opencontainers.image.source" = packages.default.meta.homepage;
                 "org.opencontainers.image.version" = packages.default.version;
                 "org.opencontainers.image.licenses" = packages.default.meta.license.spdxId;
-                "org.opencontainers.image.title" = packages.default.pname;
-                "org.opencontainers.image.description" = packages.default.meta.description;
               };
             };
           };

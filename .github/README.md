@@ -15,19 +15,18 @@ A Discord bot / web server that downloads and embeds videos
 
 Binary executables are available in [releases](https://github.com/spotdemo4/discord-embedder/releases)
 
-### Docker Installation
+### Docker
 
 ```yaml
 # docker-compose.yaml
 services:
   discord-embedder:
     container_name: discord-embedder
-    image: ghcr.io/spotdemo4/discord-embedder:0.1.14 # replace version with latest
+    image: ghcr.io/spotdemo4/discord-embedder:0.1.14
     environment:
       - DISCORD_TOKEN=...
       - DISCORD_APPLICATION_ID=...
       - FILES_DIR=/files
-      ...
     volumes:
       - ./files:/files
     ports:
@@ -35,7 +34,7 @@ services:
     restart: unless-stopped
 ```
 
-### Nix Installation
+### Nix
 
 Add the repository to your flake inputs
 
