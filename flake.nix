@@ -230,7 +230,7 @@
         packages = {
           default = pkgs.buildGoModule (finalAttrs: {
             pname = "discord-embedder";
-            version = "0.1.14";
+            version = "0.1.15";
 
             src = fs.toSource {
               root = ./.;
