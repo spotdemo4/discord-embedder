@@ -1,7 +1,7 @@
 # github.com/bwmarrin/discordgo v0.29.0
 ## explicit; go 1.13
 github.com/bwmarrin/discordgo
-# github.com/caarlos0/env/v11 v11.3.1
+# github.com/caarlos0/env/v11 v11.4.0
 ## explicit; go 1.18
 github.com/caarlos0/env/v11
 # github.com/go-logr/logr v1.4.3
