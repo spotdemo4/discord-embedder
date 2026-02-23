@@ -14,7 +14,7 @@
     systems.url = "github:nix-systems/default";
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     trev = {
-      url = "github:spotdemo4/nur";
+      url = "github:spotdemo4/nur/195093570203771e5227e1bce9ed4e76dd601624";
       inputs.systems.follows = "systems";
       inputs.nixpkgs.follows = "nixpkgs";
     };
@@ -47,7 +47,6 @@
       rec {
         devShells = {
           default = pkgs.mkShell {
-            name = "default";
             shellHook = pkgs.shellhook.ref;
             packages = with pkgs; [
               # go
@@ -70,21 +69,18 @@
           };
 
           bump = pkgs.mkShell {
-            name = "bump";
             packages = with pkgs; [
               bumper
             ];
           };
 
           release = pkgs.mkShell {
-            name = "release";
             packages = with pkgs; [
               flake-release
             ];
           };
 
           update = pkgs.mkShell {
-            name = "update";
             packages = with pkgs; [
               renovate
 
@@ -94,7 +90,6 @@
           };
 
           vulnerable = pkgs.mkShell {
-            name = "vulnerable";
             packages = with pkgs; [
               # go
               go
