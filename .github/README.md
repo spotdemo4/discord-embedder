@@ -23,7 +23,7 @@ Binary executables are available in [releases](https://github.com/spotdemo4/disc
 services:
   discord-embedder:
     container_name: discord-embedder
-    image: ghcr.io/spotdemo4/discord-embedder:0.1.16
+    image: ghcr.io/spotdemo4/discord-embedder:0.1.17
     environment:
       - DISCORD_TOKEN=...
       - DISCORD_APPLICATION_ID=...
