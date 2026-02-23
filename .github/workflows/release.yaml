@@ -9,7 +9,8 @@ concurrency:
   group: release
 
 permissions:
-  contents: write
+  contents: read
+  id-token: write
   packages: write
 
 jobs:

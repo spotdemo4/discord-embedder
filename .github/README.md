@@ -1,10 +1,11 @@
 # discord-embedder
 
-[![check](https://img.shields.io/github/actions/workflow/status/spotdemo4/discord-embedder/check.yaml?branch=main&logo=nixos&logoColor=%2389dceb&label=check&labelColor=%2311111b)](https://github.com/spotdemo4/discord-embedder/actions/workflows/check.yaml)
-[![vulnerable](https://img.shields.io/github/actions/workflow/status/spotdemo4/discord-embedder/vulnerable.yaml?branch=main&logo=Go&logoColor=%2389dceb&label=vulnerable&labelColor=%2311111b)](https://github.com/spotdemo4/discord-embedder/actions/workflows/vulnerable.yaml)
-[![release](https://img.shields.io/github/v/release/spotdemo4/discord-embedder?logo=github&logoColor=%23cdd6f4&labelColor=%2311111b&color=%23313244)](https://github.com/spotdemo4/discord-embedder/releases/latest)
+[![check](https://img.shields.io/github/actions/workflow/status/spotdemo4/discord-embedder/check.yaml?branch=main&logo=github&logoColor=%23bac2de&label=check&labelColor=%23313244)](https://github.com/spotdemo4/discord-embedder/actions/workflows/check.yaml/)
+[![vulnerable](https://img.shields.io/github/actions/workflow/status/spotdemo4/discord-embedder/vulnerable.yaml?branch=main&logo=github&logoColor=%23bac2de&label=vulnerable&labelColor=%23313244)](https://github.com/spotdemo4/discord-embedder/actions/workflows/vulnerable.yaml)
+[![nix](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fspotdemo4%2Fdiscord-embedder%2Frefs%2Fheads%2Fmain%2Fflake.lock&query=%24.nodes.nixpkgs.original.ref&logo=nixos&logoColor=%23bac2de&label=channel&labelColor=%23313244&color=%234d6fb7)](https://nixos.org/)
+[![go](https://img.shields.io/github/go-mod/go-version/spotdemo4/discord-embedder?logo=go&logoColor=%23bac2de&label=version&labelColor=%23313244&color=%2300ADD8)](https://go.dev/doc/devel/release)
 
-A Discord bot / web server that downloads and embeds videos
+A Discord bot / web server that downloads and generates video embeds
 
 ## Requirements
 

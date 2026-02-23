@@ -14,8 +14,12 @@ on:
           - "true"
           - "false"
 
+concurrency:
+  group: release
+
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   bump:
