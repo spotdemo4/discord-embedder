@@ -17,16 +17,19 @@ jobs:
   release:
     runs-on: ubuntu-24.04
     steps:
-      - name: Initialize
+      - id: init
+        name: Initialize
         uses: spotdemo4/nix-init@404b7e941df54f8cde2a4efb20c2affa819af909 # v1.30.0
         with:
+          app_id: ${{ vars.CLIENT_ID }}
+          app_key: ${{ secrets.PRIVATE_KEY }}
           fetch_depth: 0
           shell: release
 
       - name: Run flake-release
         run: flake-release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.init.outputs.token }}
           REGISTRY: ghcr.io
           REGISTRY_USERNAME: ${{ github.actor }}
           REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
