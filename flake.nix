@@ -14,7 +14,7 @@
     systems.url = "github:nix-systems/default";
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     trev = {
-      url = "github:spotdemo4/nur/cb3a36c8d8b03e01bfebf01515dcad53282c8d37";
+      url = "github:spotdemo4/nur/540a78bcef7827ef3d1d764d59bb7b4ffcca7de6";
       inputs.systems.follows = "systems";
       inputs.nixpkgs.follows = "nixpkgs";
     };
