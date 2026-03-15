@@ -24,6 +24,21 @@
         "trev": "trev"
       }
     },
+    "schemas": {
+      "locked": {
+        "lastModified": 1773072327,
+        "narHash": "sha256-jffaEGY9Tt0IgiI1qHd/cXLeTMftOqpI/gtkS/J+Xg0=",
+        "owner": "DeterminateSystems",
+        "repo": "flake-schemas",
+        "rev": "834aaadfc96174a3abd124cf3c9a7373c26d12ad",
+        "type": "github"
+      },
+      "original": {
+        "owner": "DeterminateSystems",
+        "repo": "flake-schemas",
+        "type": "github"
+      }
+    },
     "semgrep-rules": {
       "flake": false,
       "locked": {
@@ -60,22 +75,23 @@
         "nixpkgs": [
           "nixpkgs"
         ],
+        "schemas": "schemas",
         "systems": [
           "systems"
         ]
       },
       "locked": {
-        "lastModified": 1773396345,
-        "narHash": "sha256-EDq+rzjweA1RgsPH3sYCR9OgSgepKys2Svi5gz7HxLs=",
+        "lastModified": 1773545229,
+        "narHash": "sha256-eB6xok5IoecbI9xja+NaG5t8ScfMgFdw4QPzeuXk1ss=",
         "owner": "spotdemo4",
         "repo": "nur",
-        "rev": "f1a07446ab30544663f8803e4fa29d2dc9d1be9f",
+        "rev": "cb6ebc5d2567751cb446be4c95f1265972e43c30",
         "type": "github"
       },
       "original": {
         "owner": "spotdemo4",
         "repo": "nur",
-        "rev": "f1a07446ab30544663f8803e4fa29d2dc9d1be9f",
+        "rev": "cb6ebc5d2567751cb446be4c95f1265972e43c30",
         "type": "github"
       }
     }
