@@ -1,6 +1,6 @@
 module discord-embedder
 
-go 1.25.5
+go 1.26.1
 
 require (
 	github.com/bwmarrin/discordgo v0.29.0
