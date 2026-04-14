@@ -115,10 +115,7 @@
 
             actions = {
               root = ./.;
-              fileset = fileset.unions [
-                ./action.yaml
-                ./.github/workflows
-              ];
+              fileset = ./.github/workflows;
               packages = with pkgs; [
                 action-validator
                 octoscan
