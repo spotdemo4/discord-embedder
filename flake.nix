@@ -179,7 +179,7 @@
           pkgs: with pkgs.lib; {
             default = pkgs.buildGoModule (finalAttrs: {
               pname = "discord-embedder";
-              version = "0.1.17";
+              version = "0.1.18";
 
               src = fileset.toSource {
                 root = ./.;
