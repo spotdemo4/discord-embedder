@@ -24,13 +24,13 @@
         "trev": "trev"
       }
     },
-    "schemas": {
+    "schema": {
       "locked": {
-        "lastModified": 1773072327,
-        "narHash": "sha256-jffaEGY9Tt0IgiI1qHd/cXLeTMftOqpI/gtkS/J+Xg0=",
+        "lastModified": 1775244557,
+        "narHash": "sha256-iYXRXIX9eafJmwJFAhqT3YxvvpNRuPFSLRCSpvGh8Ic=",
         "owner": "DeterminateSystems",
         "repo": "flake-schemas",
-        "rev": "834aaadfc96174a3abd124cf3c9a7373c26d12ad",
+        "rev": "15edbeeaf77e42216dbcba8bfd907fdeabb75a2b",
         "type": "github"
       },
       "original": {
@@ -75,23 +75,23 @@
         "nixpkgs": [
           "nixpkgs"
         ],
-        "schemas": "schemas",
+        "schema": "schema",
         "systems": [
           "systems"
         ]
       },
       "locked": {
-        "lastModified": 1773568178,
-        "narHash": "sha256-XGhgQhsr4dy8YxYdOLifvg6RtDe8yVeI9fD06j7cLP0=",
+        "lastModified": 1776074400,
+        "narHash": "sha256-QNrpWL0Tcsf49CcEX5lX9hCFK9EFpIlY22IzYq7yYkY=",
         "owner": "spotdemo4",
         "repo": "nur",
-        "rev": "ac790f2b89e73f6a06801e474c53162831578172",
+        "rev": "67ac4d4ce8f8d967ccaaeb1e73d1efd5e7a0c4c9",
         "type": "github"
       },
       "original": {
         "owner": "spotdemo4",
         "repo": "nur",
-        "rev": "ac790f2b89e73f6a06801e474c53162831578172",
+        "rev": "67ac4d4ce8f8d967ccaaeb1e73d1efd5e7a0c4c9",
         "type": "github"
       }
     }
