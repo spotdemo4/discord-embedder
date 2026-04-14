@@ -19,12 +19,6 @@
   },
   "packageRules": [
     {
-      "matchManagers": ["gomod"],
-      "matchDepNames": ["go"],
-      "matchDepTypes": ["golang"],
-      "rangeStrategy": "bump"
-    },
-    {
       "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
       "automerge": true
     },
