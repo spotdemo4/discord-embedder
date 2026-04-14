@@ -103,7 +103,8 @@
               root = ./.;
               fileset = fileset.unions [
                 ./revive.toml
-                (fileset.fileFilter (file: file.hasExt "go") ./.)
+                ./main.go
+                ./internal
               ];
               packages = with pkgs; [
                 revive
@@ -114,8 +115,7 @@
             };
 
             actions = {
-              root = ./.;
-              fileset = ./.github/workflows;
+              root = ./.github/workflows;
               packages = with pkgs; [
                 action-validator
                 octoscan
@@ -139,6 +139,7 @@
 
             nix = {
               root = ./.;
+              ignore = ./vendor;
               filter = file: file.hasExt "nix";
               packages = with pkgs; [
                 nixfmt
@@ -150,6 +151,7 @@
 
             prettier = {
               root = ./.;
+              ignore = ./vendor;
               filter = file: file.hasExt "yaml" || file.hasExt "json" || file.hasExt "md";
               packages = with pkgs; [
                 prettier
@@ -161,6 +163,7 @@
 
             tombi = {
               root = ./.;
+              ignore = ./vendor;
               filter = file: file.hasExt "toml";
               packages = with pkgs; [
                 tombi
