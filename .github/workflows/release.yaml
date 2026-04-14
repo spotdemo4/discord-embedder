@@ -14,7 +14,8 @@ permissions:
   packages: write
 
 jobs:
-  release:
+  linux-amd64:
+    name: linux amd64
     runs-on: ubuntu-24.04
     steps:
       - id: init
@@ -26,10 +27,70 @@ jobs:
           fetch_depth: 0
           shell: release
 
-      - name: Run flake-release
+      - name: Release to GitHub
         run: flake-release
         env:
           GITHUB_TOKEN: ${{ steps.init.outputs.token }}
           REGISTRY: ghcr.io
           REGISTRY_USERNAME: ${{ github.actor }}
           REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+          PACKAGES: |
+            packages.x86_64-linux.default.x86_64-linux
+            packages.x86_64-linux.default.x86_64-windows
+            images.x86_64-linux.default.x86_64-linux
+
+      - name: Publish to FlakeHub
+        uses: DeterminateSystems/flakehub-push@71f57208810a5d299fc6545350981de98fdbc860 # v6
+        with:
+          visibility: public
+
+  linux-arm64:
+    name: linux arm64
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - id: init
+        name: Initialize
+        uses: spotdemo4/nix-init@91bbca32bfa8d48baf47c8b2c0a15ce89c5ff0aa # v1.42.0
+        with:
+          app_id: ${{ vars.CLIENT_ID }}
+          app_key: ${{ secrets.PRIVATE_KEY }}
+          fetch_depth: 0
+          shell: release
+
+      - name: Release to GitHub
+        run: flake-release
+        env:
+          GITHUB_TOKEN: ${{ steps.init.outputs.token }}
+          REGISTRY: ghcr.io
+          REGISTRY_USERNAME: ${{ github.actor }}
+          REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+          PACKAGES: |
+            packages.aarch64-linux.default.aarch64-linux
+            packages.aarch64-linux.default.armv7l-linux
+            packages.aarch64-linux.default.armv6l-linux
+            images.aarch64-linux.default.aarch64-linux
+            images.aarch64-linux.default.armv7l-linux
+
+  darwin-arm64:
+    name: darwin arm64
+    runs-on: macos-26
+    steps:
+      - id: init
+        name: Initialize
+        uses: spotdemo4/nix-init@91bbca32bfa8d48baf47c8b2c0a15ce89c5ff0aa # v1.42.0
+        with:
+          app_id: ${{ vars.CLIENT_ID }}
+          app_key: ${{ secrets.PRIVATE_KEY }}
+          fetch_depth: 0
+          shell: release
+
+      - name: Release to GitHub
+        run: flake-release
+        env:
+          GITHUB_TOKEN: ${{ steps.init.outputs.token }}
+          REGISTRY: ghcr.io
+          REGISTRY_USERNAME: ${{ github.actor }}
+          REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+          PACKAGES: |
+            packages.aarch64-darwin.default.aarch64-darwin
+            packages.aarch64-darwin.default.x86_64-darwin

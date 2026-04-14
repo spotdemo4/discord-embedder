@@ -11,40 +11,23 @@
   };
 
   inputs = {
-    systems.url = "github:nix-systems/default";
+    systems.url = "github:spotdemo4/systems";
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     trev = {
-      url = "github:spotdemo4/nur/ac790f2b89e73f6a06801e474c53162831578172";
+      url = "github:spotdemo4/nur";
       inputs.systems.follows = "systems";
       inputs.nixpkgs.follows = "nixpkgs";
-    };
-    semgrep-rules = {
-      url = "github:semgrep/semgrep-rules";
-      flake = false;
     };
   };
 
   outputs =
     {
-      nixpkgs,
+      self,
       trev,
-      semgrep-rules,
       ...
     }:
     trev.libs.mkFlake (
-      system:
-      let
-        pkgs = import nixpkgs {
-          inherit system;
-          overlays = [
-            trev.overlays.packages
-            trev.overlays.libs
-            trev.overlays.images
-          ];
-        };
-        fs = pkgs.lib.fileset;
-      in
-      rec {
+      system: pkgs: {
         devShells = {
           default = pkgs.mkShell {
             shellHook = pkgs.shellhook.ref;
@@ -59,6 +42,7 @@
 
               # format
               nixfmt
+              tombi
               prettier
 
               # util
@@ -83,9 +67,7 @@
           update = pkgs.mkShell {
             packages = with pkgs; [
               renovate
-
-              # go mod vendor
-              go
+              go # go mod vendor
             ];
           };
 
@@ -95,191 +77,144 @@
               go
               govulncheck
 
-              # flake
-              flake-checker
-
-              # actions
-              octoscan
+              flake-checker # flake
+              octoscan # actions
             ];
           };
         };
 
-        checks = pkgs.lib.mkChecks {
-          go = {
-            src = packages.default;
-            script = ''
-              go test ./...
-            '';
-          };
+        apps = pkgs.mkApps {
+          dev = "air";
+          run = "go run .";
+          vendor = "go mod tidy && go mod vendor";
+        };
 
-          revive = {
-            src = fs.toSource {
+        checks =
+          with pkgs.lib;
+          pkgs.mkChecks {
+            go = {
+              src = self.packages.${system}.default;
+              script = ''
+                go test ./...
+              '';
+            };
+
+            revive = {
               root = ./.;
-              fileset = fs.unions [
+              fileset = fileset.unions [
                 ./revive.toml
-                (fs.fileFilter (file: file.hasExt "go") ./.)
+                (fileset.fileFilter (file: file.hasExt "go") ./.)
               ];
+              packages = with pkgs; [
+                revive
+              ];
+              script = ''
+                revive ./...
+              '';
             };
-            deps = with pkgs; [
-              revive
-            ];
-            script = ''
-              revive ./...
-            '';
-          };
 
-          opengrep = {
-            src = fs.toSource {
+            actions = {
               root = ./.;
-              fileset = fs.fileFilter (file: file.hasExt "go") ./.;
+              fileset = fileset.unions [
+                ./action.yaml
+                ./.github/workflows
+              ];
+              packages = with pkgs; [
+                action-validator
+                octoscan
+              ];
+              forEach = ''
+                action-validator "$file"
+                octoscan scan "$file"
+              '';
             };
-            deps = with pkgs; [
-              opengrep
-            ];
-            script = ''
-              opengrep scan \
-                --quiet \
-                --error \
-                --use-git-ignore \
-                --exclude="/vendor/" \
-                --config="${semgrep-rules}/go"
-            '';
-          };
 
-          actions = {
-            src = fs.toSource {
-              root = ./.github/workflows;
-              fileset = ./.github/workflows;
-            };
-            deps = with pkgs; [
-              action-validator
-              octoscan
-            ];
-            script = ''
-              action-validator **/*.yaml
-              octoscan scan .
-            '';
-          };
-
-          renovate = {
-            src = fs.toSource {
+            renovate = {
               root = ./.github;
               fileset = ./.github/renovate.json;
-            };
-            deps = with pkgs; [
-              renovate
-            ];
-            script = ''
-              renovate-config-validator renovate.json
-            '';
-          };
-
-          nix = {
-            src = fs.toSource {
-              root = ./.;
-              fileset = fs.fileFilter (file: file.hasExt "nix") ./.;
-            };
-            deps = with pkgs; [
-              nixfmt-tree
-            ];
-            script = ''
-              treefmt --ci
-            '';
-          };
-
-          prettier = {
-            src = fs.toSource {
-              root = ./.;
-              fileset = fs.difference (fs.fileFilter (
-                file: file.hasExt "yaml" || file.hasExt "json" || file.hasExt "md"
-              ) ./.) ./vendor;
-            };
-            deps = with pkgs; [
-              prettier
-            ];
-            script = ''
-              prettier --check .
-            '';
-          };
-
-          tombi = {
-            src = fs.toSource {
-              root = ./.;
-              fileset = fs.fileFilter (file: file.hasExt "toml") ./.;
-            };
-            deps = with pkgs; [
-              tombi
-            ];
-            script = ''
-              tombi format --offline --check
-              tombi lint --offline --error-on-warnings
-            '';
-          };
-        };
-
-        apps = pkgs.lib.mkApps {
-          dev.script = "air";
-          run.script = "go run .";
-        };
-
-        packages = {
-          default = pkgs.buildGoModule (finalAttrs: {
-            pname = "discord-embedder";
-            version = "0.1.17";
-
-            src = fs.toSource {
-              root = ./.;
-              fileset = fs.unions [
-                ./go.mod
-                ./go.sum
-                ./main.go
-                ./vendor
-                ./internal
-                ./templates
+              packages = with pkgs; [
+                renovate
               ];
+              script = ''
+                renovate-config-validator renovate.json
+              '';
             };
 
-            goSum = finalAttrs.src + "go.sum";
-            vendorHash = null;
-            env.CGO_ENABLED = 0;
-
-            meta = {
-              description = "Embed videos from various sources into Discord messages";
-              mainProgram = "discord-embedder";
-              homepage = "https://github.com/spotdemo4/discord-embedder";
-              changelog = "https://github.com/spotdemo4/discord-embedder/releases/tag/v${finalAttrs.version}";
-              license = pkgs.lib.licenses.mit;
-              platforms = pkgs.lib.platforms.all;
+            nix = {
+              root = ./.;
+              filter = file: file.hasExt "nix";
+              packages = with pkgs; [
+                nixfmt
+              ];
+              forEach = ''
+                nixfmt --check "$file"
+              '';
             };
-          });
 
-          image = pkgs.dockerTools.buildLayeredImage {
-            name = packages.default.pname;
-            tag = packages.default.version;
+            prettier = {
+              root = ./.;
+              filter = file: file.hasExt "yaml" || file.hasExt "json" || file.hasExt "md";
+              packages = with pkgs; [
+                prettier
+              ];
+              forEach = ''
+                prettier --check "$file"
+              '';
+            };
 
-            fromImage = pkgs.image.ffmpeg;
-            contents = with pkgs; [
-              packages.default
-              yt-dlp
-            ];
-
-            created = "now";
-            meta = packages.default.meta;
-
-            config = {
-              Cmd = [ "${pkgs.lib.meta.getExe packages.default}" ];
-              Labels = {
-                "org.opencontainers.image.title" = packages.default.pname;
-                "org.opencontainers.image.description" = packages.default.meta.description;
-                "org.opencontainers.image.source" = packages.default.meta.homepage;
-                "org.opencontainers.image.version" = packages.default.version;
-                "org.opencontainers.image.licenses" = packages.default.meta.license.spdxId;
-              };
+            tombi = {
+              root = ./.;
+              filter = file: file.hasExt "toml";
+              packages = with pkgs; [
+                tombi
+              ];
+              forEach = ''
+                tombi format --offline --check "$file"
+                tombi lint --offline --error-on-warnings "$file"
+              '';
             };
           };
-        };
+
+        packages = pkgs.mkPackages pkgs (
+          pkgs: with pkgs.lib; {
+            default = pkgs.buildGoModule (finalAttrs: {
+              pname = "discord-embedder";
+              version = "0.1.17";
+
+              src = fileset.toSource {
+                root = ./.;
+                fileset = fileset.unions [
+                  ./go.mod
+                  ./go.sum
+                  ./main.go
+                  ./internal
+                  ./templates
+                  ./vendor
+                ];
+              };
+              goSum = ./go.sum;
+              vendorHash = null;
+
+              meta = {
+                mainProgram = "discord-embedder";
+                description = "Embed videos from various sources into Discord messages";
+                license = licenses.mit;
+                platforms = platforms.all;
+                homepage = "https://github.com/spotdemo4/discord-embedder";
+                changelog = "https://github.com/spotdemo4/discord-embedder/releases/tag/v${finalAttrs.version}";
+              };
+            });
+          }
+        );
+
+        images = pkgs.mkImages pkgs (pkgs: {
+          default = pkgs.mkImage self.packages.${system}.default {
+            contents = with pkgs; [ dockerTools.caCertificates ];
+          };
+        });
 
         formatter = pkgs.nixfmt-tree;
+        schemas = trev.schemas;
       }
     );
 }

@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       force:
-        description: "Force bump"
+        description: "force"
         required: false
         type: choice
         default: "true"
@@ -23,9 +23,10 @@ permissions:
 
 jobs:
   bump:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
-      - name: Initialize
+      - id: init
+        name: Initialize
         uses: spotdemo4/nix-init@91bbca32bfa8d48baf47c8b2c0a15ce89c5ff0aa # v1.42.0
         with:
           app_id: ${{ vars.CLIENT_ID }}
@@ -36,6 +37,6 @@ jobs:
       - name: Bump
         run: bumper
         env:
+          GITHUB_TOKEN: ${{ steps.init.outputs.token }}
           FORCE: ${{ inputs.force }}
-          PATHS: |-
-            .github/README.md
+          PATHS: .github/README.md
