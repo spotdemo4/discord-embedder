@@ -220,7 +220,7 @@
               mainProgram = "discord-embedder";
               description = "Embed videos from various sources into Discord messages";
               license = licenses.mit;
-              platforms = platforms.linux;
+              platforms = platforms.unix;
               badPlatforms = [ systems.inspect.platformPatterns.isStatic ];
               homepage = "https://github.com/spotdemo4/discord-embedder";
               changelog = "https://github.com/spotdemo4/discord-embedder/releases/tag/v${final.version}";
