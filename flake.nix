@@ -27,7 +27,14 @@
       ...
     }:
     trev.libs.mkFlake (
-      system: pkgs: {
+      system: pkgs:
+      let
+        ffmpeg-qsv = pkgs.ffmpeg.override {
+          ffmpegVariant = "headless";
+          withVpl = true;
+        };
+      in
+      {
         devShells = {
           default = pkgs.mkShell {
             shellHook = pkgs.shellhook.ref;
@@ -36,6 +43,10 @@
               go
               gotools
               gopls
+
+              # deps
+              ffmpeg-qsv
+              yt-dlp
 
               # lint
               revive
@@ -175,46 +186,54 @@
             };
           };
 
-        packages = pkgs.mkPackages pkgs (
-          pkgs: with pkgs.lib; {
-            default = pkgs.buildGoModule (finalAttrs: {
-              pname = "discord-embedder";
-              version = "0.1.18";
+        packages.default = pkgs.buildGoModule (
+          final: with pkgs.lib; {
+            pname = "discord-embedder";
+            version = "0.1.18";
 
-              src = fileset.toSource {
-                root = ./.;
-                fileset = fileset.unions [
-                  ./go.mod
-                  ./go.sum
-                  ./main.go
-                  ./internal
-                  ./templates
-                  ./vendor
-                ];
-              };
-              goSum = ./go.sum;
-              vendorHash = null;
+            src = fileset.toSource {
+              root = ./.;
+              fileset = fileset.unions [
+                ./go.mod
+                ./go.sum
+                ./main.go
+                ./internal
+                ./templates
+                ./vendor
+              ];
+            };
+            goSum = ./go.sum;
+            vendorHash = null;
 
-              meta = {
-                mainProgram = "discord-embedder";
-                description = "Embed videos from various sources into Discord messages";
-                license = licenses.mit;
-                platforms = platforms.all;
-                homepage = "https://github.com/spotdemo4/discord-embedder";
-                changelog = "https://github.com/spotdemo4/discord-embedder/releases/tag/v${finalAttrs.version}";
-              };
-            });
+            nativeBuildInputs = with pkgs; [ makeWrapper ];
+            postFixup = ''
+              wrapProgram $out/bin/discord-embedder \
+                --prefix PATH : ${
+                  pkgs.lib.makeBinPath [
+                    ffmpeg-qsv
+                    pkgs.yt-dlp
+                  ]
+                }
+            '';
+
+            meta = {
+              mainProgram = "discord-embedder";
+              description = "Embed videos from various sources into Discord messages";
+              license = licenses.mit;
+              platforms = platforms.linux;
+              badPlatforms = [ systems.inspect.platformPatterns.isStatic ];
+              homepage = "https://github.com/spotdemo4/discord-embedder";
+              changelog = "https://github.com/spotdemo4/discord-embedder/releases/tag/v${final.version}";
+            };
           }
         );
 
-        images = pkgs.mkImages pkgs (pkgs: {
-          default = pkgs.mkImage self.packages.${system}.default {
-            contents = with pkgs; [
-              dockerTools.caCertificates
-              yt-dlp
-            ];
-          };
-        });
+        images.default = pkgs.mkImage {
+          src = self.packages.${system}.default;
+          contents = with pkgs; [
+            dockerTools.caCertificates
+          ];
+        };
 
         formatter = pkgs.nixfmt-tree;
         schemas = trev.schemas;
