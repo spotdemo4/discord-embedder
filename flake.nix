@@ -209,7 +209,10 @@
 
         images = pkgs.mkImages pkgs (pkgs: {
           default = pkgs.mkImage self.packages.${system}.default {
-            contents = with pkgs; [ dockerTools.caCertificates ];
+            contents = with pkgs; [
+              dockerTools.caCertificates
+              yt-dlp
+            ];
           };
         });
 
