@@ -102,15 +102,8 @@
 
         checks = pkgs.mkChecks {
           go = {
-            root = ./.;
-            filter = file: file.hasExt "go";
-            ignore = ./vendor;
-            include = [
-              ./go.mod
-              ./go.sum
-            ];
+            src = self.packages.${system}.default;
             packages = with pkgs; [
-              go
               go-tools
             ];
             script = ''
