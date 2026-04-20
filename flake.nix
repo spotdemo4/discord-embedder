@@ -49,7 +49,7 @@
               yt-dlp
 
               # lint
-              revive
+              go-tools
 
               # format
               nixfmt
@@ -100,91 +100,96 @@
           vendor = "go mod tidy && go mod vendor";
         };
 
-        checks =
-          with pkgs.lib;
-          pkgs.mkChecks {
-            go = {
-              src = self.packages.${system}.default;
-              script = ''
-                go test ./...
-              '';
-            };
-
-            revive = {
-              root = ./.;
-              fileset = fileset.unions [
-                ./revive.toml
-                ./main.go
-                ./internal
-              ];
-              packages = with pkgs; [
-                revive
-              ];
-              script = ''
-                revive ./...
-              '';
-            };
-
-            actions = {
-              root = ./.github/workflows;
-              packages = with pkgs; [
-                action-validator
-                zizmor
-              ];
-              forEach = ''
-                action-validator "$file"
-                zizmor --offline "$file"
-              '';
-            };
-
-            renovate = {
-              root = ./.github;
-              fileset = ./.github/renovate.json;
-              packages = with pkgs; [
-                renovate
-              ];
-              script = ''
-                renovate-config-validator renovate.json
-              '';
-            };
-
-            nix = {
-              root = ./.;
-              ignore = ./vendor;
-              filter = file: file.hasExt "nix";
-              packages = with pkgs; [
-                nixfmt
-              ];
-              forEach = ''
-                nixfmt --check "$file"
-              '';
-            };
-
-            prettier = {
-              root = ./.;
-              ignore = ./vendor;
-              filter = file: file.hasExt "yaml" || file.hasExt "json" || file.hasExt "md";
-              packages = with pkgs; [
-                prettier
-              ];
-              forEach = ''
-                prettier --check "$file"
-              '';
-            };
-
-            tombi = {
-              root = ./.;
-              ignore = ./vendor;
-              filter = file: file.hasExt "toml";
-              packages = with pkgs; [
-                tombi
-              ];
-              forEach = ''
-                tombi format --offline --check "$file"
-                tombi lint --offline --error-on-warnings "$file"
-              '';
-            };
+        checks = pkgs.mkChecks {
+          go = {
+            root = ./.;
+            filter = file: file.hasExt "go";
+            ignore = ./vendor;
+            include = [
+              ./go.mod
+              ./go.sum
+            ];
+            packages = with pkgs; [
+              go
+              go-tools
+            ];
+            script = ''
+              go test ./...
+              go vet ./...
+              staticcheck ./...
+            '';
           };
+
+          actions = {
+            root = ./.github/workflows;
+            packages = with pkgs; [
+              action-validator
+              zizmor
+            ];
+            forEach = ''
+              action-validator "$file"
+              zizmor --offline "$file"
+            '';
+          };
+
+          renovate = {
+            root = ./.github;
+            fileset = ./.github/renovate.json;
+            packages = with pkgs; [
+              renovate
+            ];
+            script = ''
+              renovate-config-validator renovate.json
+            '';
+          };
+
+          nix = {
+            root = ./.;
+            filter = file: file.hasExt "nix";
+            ignore = ./vendor;
+            packages = with pkgs; [
+              nixfmt
+            ];
+            forEach = ''
+              nixfmt --check "$file"
+            '';
+          };
+
+          prettier = {
+            root = ./.;
+            filter = file: file.hasExt "yaml" || file.hasExt "json" || file.hasExt "md";
+            ignore = ./vendor;
+            packages = with pkgs; [
+              prettier
+            ];
+            forEach = ''
+              prettier --check "$file"
+            '';
+          };
+
+          tombi = {
+            root = ./.;
+            filter = file: file.hasExt "toml";
+            ignore = ./vendor;
+            packages = with pkgs; [
+              tombi
+            ];
+            forEach = ''
+              tombi format --offline --check "$file"
+              tombi lint --offline --error-on-warnings "$file"
+            '';
+          };
+        };
+
+        formatter = pkgs.treefmt.withConfig {
+          configFile = ./treefmt.toml;
+          runtimeInputs = with pkgs; [
+            go
+            nixfmt
+            tombi
+            prettier
+          ];
+        };
 
         packages.default = pkgs.buildGoModule (
           final: with pkgs.lib; {
@@ -235,7 +240,6 @@
           ];
         };
 
-        formatter = pkgs.nixfmt-tree;
         schemas = trev.schemas;
       }
     );

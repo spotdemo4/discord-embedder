@@ -1,0 +1,21 @@
+#:schema https://www.schemastore.org/treefmt.json
+
+excludes = ["vendor/**"]
+
+[formatter.go]
+command = "gofmt"
+includes = ["*.go"]
+
+[formatter.nix]
+command = "nixfmt"
+includes = ["*.nix"]
+
+[formatter.toml]
+command = "tombi"
+options = ["format"]
+includes = ["*.toml"]
+
+[formatter.prettier]
+command = "prettier"
+options = ["--write"]
+includes = ["*.yaml", "*.json", "*.md"]
