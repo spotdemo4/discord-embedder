@@ -89,14 +89,14 @@
               govulncheck
 
               flake-checker # flake
-              octoscan # actions
+              zizmor # actions
             ];
           };
         };
 
         apps = pkgs.mkApps {
+          default = "go run .";
           dev = "air";
-          run = "go run .";
           vendor = "go mod tidy && go mod vendor";
         };
 
@@ -129,11 +129,11 @@
               root = ./.github/workflows;
               packages = with pkgs; [
                 action-validator
-                octoscan
+                zizmor
               ];
               forEach = ''
                 action-validator "$file"
-                octoscan scan "$file"
+                zizmor --offline "$file"
               '';
             };
 
