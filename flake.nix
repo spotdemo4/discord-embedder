@@ -211,7 +211,15 @@
                     ffmpeg-qsv
                     pkgs.yt-dlp
                   ]
-                }
+                } \
+                --prefix LD_LIBRARY_PATH : ${
+                  pkgs.lib.makeLibraryPath [
+                    pkgs.intel-media-driver
+                    pkgs.vpl-gpu-rt
+                  ]
+                } \
+                --set LIBVA_DRIVERS_PATH ${pkgs.intel-media-driver}/lib/dri \
+                --set LIBVA_DRIVER_NAME iHD
             '';
 
             meta = {
