@@ -57,9 +57,7 @@
               prettier
 
               # util
-              air
               bumper
-              flake-release
             ];
           };
 
@@ -95,8 +93,7 @@
         };
 
         apps = pkgs.mkApps {
-          default = "go run .";
-          dev = "air";
+          dev = "go run .";
           vendor = "go mod tidy && go mod vendor";
         };
 
@@ -119,7 +116,7 @@
               action-validator
               zizmor
             ];
-            forEach = ''
+            script = ''
               action-validator "$file"
               zizmor --offline "$file"
             '';
@@ -143,7 +140,7 @@
             packages = with pkgs; [
               nixfmt
             ];
-            forEach = ''
+            script = ''
               nixfmt --check "$file"
             '';
           };
@@ -155,7 +152,7 @@
             packages = with pkgs; [
               prettier
             ];
-            forEach = ''
+            script = ''
               prettier --check "$file"
             '';
           };
@@ -167,7 +164,7 @@
             packages = with pkgs; [
               tombi
             ];
-            forEach = ''
+            script = ''
               tombi format --offline --check "$file"
               tombi lint --offline --error-on-warnings "$file"
             '';
@@ -240,8 +237,6 @@
             dockerTools.caCertificates
           ];
         };
-
-        schemas = trev.schemas;
       }
     );
 }
