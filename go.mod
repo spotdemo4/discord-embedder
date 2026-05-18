@@ -2,6 +2,8 @@ module discord-embedder
 
 go 1.26.1
 
+toolchain go1.26.2
+
 require (
 	github.com/bwmarrin/discordgo v0.29.0
 	github.com/caarlos0/env/v11 v11.4.1
