@@ -184,7 +184,7 @@
         packages.default = pkgs.buildGoModule (
           final: with pkgs.lib; {
             pname = "discord-embedder";
-            version = "0.1.20";
+            version = "0.1.21";
 
             src = fileset.toSource {
               root = ./.;
