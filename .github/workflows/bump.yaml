@@ -32,6 +32,7 @@ jobs:
           app_id: ${{ vars.CLIENT_ID }}
           app_key: ${{ secrets.PRIVATE_KEY }}
           shell: bump
+          fetch_depth: 0
 
       - name: Bump
         run: bumper
