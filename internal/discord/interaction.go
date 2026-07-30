@@ -4,6 +4,7 @@ import (
 	"context"
 	"discord-embedder/internal/config"
 	"discord-embedder/internal/logger"
+	"discord-embedder/internal/version"
 	"discord-embedder/internal/video"
 	"encoding/json"
 	"errors"
@@ -45,6 +46,12 @@ func onInteraction(ctx context.Context) any {
 				}
 
 				return
+			}
+
+		case "version":
+			nctx := slogctx.Append(ctx, "interaction_id", i.ID)
+			if err := handleVersion(nctx, s, i); err != nil {
+				log.ErrorContext(nctx, "could not handle version interaction", "error", err)
 			}
 
 		default:
@@ -126,6 +133,50 @@ func handleEmbed(
 	if err != nil || message == nil {
 		log.ErrorContext(ctx, "could not send video to discord", "error", err)
 		return err
+	}
+
+	return nil
+}
+
+func handleVersion(
+	ctx context.Context,
+	s *discordgo.Session,
+	i *discordgo.InteractionCreate,
+) error {
+	log := logger.FromContext(ctx)
+
+	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+	}); err != nil {
+		return fmt.Errorf("defer version interaction: %w", err)
+	}
+
+	ytdlpVersion, err := version.YTDLP(ctx)
+	if err != nil {
+		log.WarnContext(ctx, "could not get yt-dlp version", "error", err)
+		ytdlpVersion = "unknown"
+	}
+
+	ffmpegVersion, err := version.FFmpeg(ctx)
+	if err != nil {
+		log.WarnContext(ctx, "could not get ffmpeg version", "error", err)
+		ffmpegVersion = "unknown"
+	}
+
+	content := fmt.Sprintf(
+		"```\ndiscord-embedder: %s\nyt-dlp: %s\nffmpeg: %s\n```",
+		version.Application,
+		ytdlpVersion,
+		ffmpegVersion,
+	)
+	message, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+		Content: &content,
+	})
+	if err != nil {
+		return fmt.Errorf("send version response: %w", err)
+	}
+	if message == nil {
+		return errors.New("send version response: empty message")
 	}
 
 	return nil

@@ -185,6 +185,7 @@
           final: with pkgs.lib; {
             pname = "discord-embedder";
             version = "0.1.23";
+            ldflags = [ "-X discord-embedder/internal/version.Application=${final.version}" ];
 
             src = fileset.toSource {
               root = ./.;

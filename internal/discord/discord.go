@@ -52,6 +52,10 @@ func New(ctx context.Context) error {
 				},
 			},
 		},
+		{
+			Name:        "version",
+			Description: "Show application and dependency versions",
+		},
 	}
 
 	// Add discord handlers
