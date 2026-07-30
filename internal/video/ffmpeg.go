@@ -15,88 +15,145 @@ import (
 func (v *Video) Compress(ctx context.Context) error {
 	log := logger.FromContext(ctx)
 	cfg := config.FromContext(ctx)
-	tempPath := filepath.Join(cfg.TempDir, v.Name)
+	tempPath, finalName, finalPath := compressionOutputPaths(cfg.TempDir, cfg.FilesDir, v.ID)
+	defer os.Remove(tempPath)
 
-	var cmd *exec.Cmd
-	if cfg.Quicksync {
-		cmd = exec.CommandContext(ctx, "ffmpeg",
-			"-hwaccel", "qsv",
-			"-hwaccel_output_format", "qsv",
-			"-i", v.Path,
-			"-c:v:0", "h264_qsv",
-			"-global_quality:v:0", "23",
-			"-c:a", "aac",
-			"-hide_banner",
-			"-loglevel", "error",
-			tempPath,
-		)
-	} else {
-		cmd = exec.CommandContext(ctx, "ffmpeg",
-			"-i", v.Path,
-			"-c:v:0", "libx264",
-			"-global_quality:v:0", "23",
-			"-c:a", "aac",
-			"-hide_banner",
-			"-loglevel", "error",
-			tempPath,
-		)
-	}
+	cmd := exec.CommandContext(ctx, "ffmpeg", compressionArgs(v.Path, tempPath, cfg.Quicksync)...)
 	out, err := cmd.Output()
 	if err != nil {
-		return err
+		return fmt.Errorf("could not compress video: %w", err)
 	}
 
 	log.DebugContext(ctx, "ffmpeg", "output", string(out))
 
-	// Delete original
-	err = os.Remove(v.Path)
-	if err != nil {
+	if err = requireAudio(ctx, tempPath); err != nil {
+		return fmt.Errorf("compressed video must contain audio: %w", err)
+	}
+
+	sourcePath := v.Path
+	if err = move(tempPath, finalPath); err != nil {
 		return err
 	}
 
-	// Move temp to original path
-	err = move(tempPath, v.Path)
-	if err != nil {
-		return err
+	v.Name = finalName
+	v.Path = finalPath
+
+	if !sameFile(sourcePath, finalPath) {
+		if err = os.Remove(sourcePath); err != nil && !os.IsNotExist(err) {
+			log.WarnContext(ctx, "could not remove original video", "path", sourcePath, "error", err)
+		}
 	}
 
 	return nil
+}
+
+func compressionArgs(input string, output string, quicksync bool) []string {
+	args := []string{"-y"}
+	if quicksync {
+		args = append(args,
+			"-hwaccel", "qsv",
+			"-hwaccel_output_format", "qsv",
+		)
+	}
+
+	args = append(args,
+		"-i", input,
+		"-map", "0:v:0",
+		"-map", "0:a:0",
+		"-sn",
+		"-dn",
+	)
+	if quicksync {
+		args = append(args,
+			"-c:v:0", "h264_qsv",
+			"-global_quality:v:0", "23",
+		)
+	} else {
+		args = append(args,
+			"-c:v:0", "libx264",
+			"-global_quality:v:0", "23",
+		)
+	}
+
+	return append(args,
+		"-c:a:0", "aac",
+		"-movflags", "+faststart",
+		"-hide_banner",
+		"-loglevel", "error",
+		output,
+	)
+}
+
+func compressionOutputPaths(tempDir string, filesDir string, id string) (tempPath string, finalName string, finalPath string) {
+	finalName = fmt.Sprintf("%s.mp4", id)
+	return filepath.Join(tempDir, fmt.Sprintf("%s.encode.mp4", id)), finalName, filepath.Join(filesDir, finalName)
 }
 
 // Trim video to start and end time.
 func (v *Video) Trim(ctx context.Context, start string, end string) error {
 	log := logger.FromContext(ctx)
 	cfg := config.FromContext(ctx)
-	tempPath := filepath.Join(cfg.TempDir, v.Name)
+	tempPath := trimOutputPath(cfg.TempDir, v.ID, v.Name)
+	defer os.Remove(tempPath)
 
-	cmd := exec.CommandContext(ctx, "ffmpeg",
-		"-ss", start,
-		"-to", end,
-		"-i", v.Path,
-		"-hide_banner",
-		"-loglevel", "error",
-		tempPath,
-	)
+	cmd := exec.CommandContext(ctx, "ffmpeg", trimArgs(v.Path, tempPath, start, end)...)
 	out, err := cmd.Output()
 	if err != nil {
-		return err
+		return fmt.Errorf("could not trim video: %w", err)
 	}
 
 	log.DebugContext(ctx, "ffmpeg", "output", string(out))
 
-	// Delete original
-	err = os.Remove(v.Path)
-	if err != nil {
-		return err
+	if err = requireAudio(ctx, tempPath); err != nil {
+		return fmt.Errorf("trimmed video must contain audio: %w", err)
 	}
 
-	// Move temp to original path
-	err = move(tempPath, v.Path)
-	if err != nil {
+	if err = move(tempPath, v.Path); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func trimArgs(input string, output string, start string, end string) []string {
+	return []string{
+		"-y",
+		"-ss", start,
+		"-to", end,
+		"-i", input,
+		"-map", "0:v:0",
+		"-map", "0:a:0",
+		"-sn",
+		"-dn",
+		"-hide_banner",
+		"-loglevel", "error",
+		output,
+	}
+}
+
+func trimOutputPath(tempDir string, id string, sourceName string) string {
+	return filepath.Join(tempDir, fmt.Sprintf("%s.trim%s", id, filepath.Ext(sourceName)))
+}
+
+func sameFile(a string, b string) bool {
+	absoluteA, err := filepath.Abs(a)
+	if err == nil {
+		absoluteB, absErr := filepath.Abs(b)
+		if absErr == nil && filepath.Clean(absoluteA) == filepath.Clean(absoluteB) {
+			return true
+		}
+	}
+
+	infoA, err := os.Stat(a)
+	if err != nil {
+		return false
+	}
+	infoB, err := os.Stat(b)
+	if err != nil {
+		return false
+	}
+
+	return os.SameFile(infoA, infoB)
 }
 
 // thumbnail generates a thumbnail for video.
@@ -134,30 +191,39 @@ func (v *Video) thumbnail(ctx context.Context) error {
 
 // move moves a file from src to dst.
 func move(src string, dst string) error {
-	// Open the source file
+	if sameFile(src, dst) {
+		return nil
+	}
+
 	srcFile, err := os.Open(src)
 	if err != nil {
 		return fmt.Errorf("failed to open source file: %w", err)
 	}
-	defer srcFile.Close() // Ensure source file is closed
+	defer srcFile.Close()
 
-	// Create the destination file
-	dstFile, err := os.Create(dst)
+	tempFile, err := os.CreateTemp(filepath.Dir(dst), "."+filepath.Base(dst)+".*")
 	if err != nil {
 		return fmt.Errorf("failed to create destination file: %w", err)
 	}
-	defer dstFile.Close() // Ensure destination file is closed
+	tempPath := tempFile.Name()
+	defer os.Remove(tempPath)
 
-	// Copy the content from source to destination
-	_, err = io.Copy(dstFile, srcFile)
-	if err != nil {
+	if _, err = io.Copy(tempFile, srcFile); err != nil {
+		tempFile.Close()
 		return fmt.Errorf("failed to copy file content: %w", err)
 	}
-
-	// Remove the original file
-	err = os.Remove(src)
-	if err != nil {
-		return fmt.Errorf("failed to remove original file: %w", err)
+	if err = tempFile.Sync(); err != nil {
+		tempFile.Close()
+		return fmt.Errorf("failed to sync destination file: %w", err)
+	}
+	if err = tempFile.Close(); err != nil {
+		return fmt.Errorf("failed to close destination file: %w", err)
+	}
+	if err = os.Rename(tempPath, dst); err != nil {
+		return fmt.Errorf("failed to install destination file: %w", err)
+	}
+	if err = os.Remove(src); err != nil {
+		return fmt.Errorf("failed to remove source file: %w", err)
 	}
 
 	return nil
