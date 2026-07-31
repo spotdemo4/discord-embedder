@@ -9,13 +9,17 @@ import (
 
 // Codec returns the codec of the video.
 func (v *Video) Codec(ctx context.Context) (string, error) {
+	return probeCodec(ctx, v.Path, "v:0")
+}
+
+func probeCodec(ctx context.Context, path string, stream string) (string, error) {
 	cmd := exec.CommandContext(ctx,
 		"ffprobe",
 		"-v", "error",
-		"-select_streams", "v:0",
+		"-select_streams", stream,
 		"-show_entries", "stream=codec_name",
 		"-of", "default=noprint_wrappers=1:nokey=1",
-		v.Path,
+		path,
 	)
 
 	out, err := cmd.Output()
@@ -23,7 +27,11 @@ func (v *Video) Codec(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	return string(out), nil
+	return parseCodecProbe(string(out)), nil
+}
+
+func parseCodecProbe(output string) string {
+	return strings.TrimSpace(output)
 }
 
 // HasAudio returns whether the video has an audio stream.
@@ -32,25 +40,12 @@ func (v *Video) HasAudio(ctx context.Context) (bool, error) {
 }
 
 func hasAudio(ctx context.Context, path string) (bool, error) {
-	cmd := exec.CommandContext(ctx,
-		"ffprobe",
-		"-v", "error",
-		"-select_streams", "a:0",
-		"-show_entries", "stream=codec_name",
-		"-of", "default=noprint_wrappers=1:nokey=1",
-		path,
-	)
-
-	out, err := cmd.Output()
+	codec, err := probeCodec(ctx, path, "a:0")
 	if err != nil {
 		return false, err
 	}
 
-	return parseAudioProbe(string(out)), nil
-}
-
-func parseAudioProbe(output string) bool {
-	return strings.TrimSpace(output) != ""
+	return codec != "", nil
 }
 
 func requireAudio(ctx context.Context, path string) error {

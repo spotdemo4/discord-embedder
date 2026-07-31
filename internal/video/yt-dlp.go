@@ -103,7 +103,7 @@ func ytdlpArgs(filesDir string, id string, downloadURL string, username string, 
 		"--ignore-config",
 		"--no-playlist",
 		"--no-simulate",
-		"--format", "bv+ba/b",
+		"--format", "bv[vcodec~='^(h264|avc)']+ba/b[vcodec~='^(h264|avc)']/bv+ba/b",
 		"--output", fmt.Sprintf("%s.%%(ext)s", filepath.Join(filesDir, id)),
 		"--print", "after_move:filepath",
 	}

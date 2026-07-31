@@ -4,6 +4,7 @@ import (
 	"context"
 	"discord-embedder/internal/config"
 	"discord-embedder/internal/logger"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -15,10 +16,27 @@ import (
 func (v *Video) Compress(ctx context.Context) error {
 	log := logger.FromContext(ctx)
 	cfg := config.FromContext(ctx)
+
+	videoCodec, err := probeCodec(ctx, v.Path, "v:0")
+	if err != nil {
+		return fmt.Errorf("could not inspect video codec: %w", err)
+	}
+	if videoCodec == "" {
+		return errors.New("input media contains no video stream")
+	}
+
+	audioCodec, err := probeCodec(ctx, v.Path, "a:0")
+	if err != nil {
+		return fmt.Errorf("could not inspect audio codec: %w", err)
+	}
+	if audioCodec == "" {
+		return errors.New("media contains no audio stream")
+	}
+
 	tempPath, finalName, finalPath := compressionOutputPaths(cfg.TempDir, cfg.FilesDir, v.ID)
 	defer os.Remove(tempPath)
 
-	cmd := exec.CommandContext(ctx, "ffmpeg", compressionArgs(v.Path, tempPath, cfg.Quicksync)...)
+	cmd := exec.CommandContext(ctx, "ffmpeg", compressionArgs(v.Path, tempPath, videoCodec, audioCodec, cfg.Quicksync)...)
 	out, err := cmd.Output()
 	if err != nil {
 		return fmt.Errorf("could not compress video: %w", err)
@@ -47,9 +65,10 @@ func (v *Video) Compress(ctx context.Context) error {
 	return nil
 }
 
-func compressionArgs(input string, output string, quicksync bool) []string {
+func compressionArgs(input string, output string, videoCodec string, audioCodec string, quicksync bool) []string {
+	transcodeVideo := videoCodec != "h264"
 	args := []string{"-y"}
-	if quicksync {
+	if transcodeVideo && quicksync {
 		args = append(args,
 			"-hwaccel", "qsv",
 			"-hwaccel_output_format", "qsv",
@@ -63,20 +82,29 @@ func compressionArgs(input string, output string, quicksync bool) []string {
 		"-sn",
 		"-dn",
 	)
-	if quicksync {
+
+	switch {
+	case !transcodeVideo:
+		args = append(args, "-c:v:0", "copy")
+	case quicksync:
 		args = append(args,
 			"-c:v:0", "h264_qsv",
 			"-global_quality:v:0", "23",
 		)
-	} else {
+	default:
 		args = append(args,
 			"-c:v:0", "libx264",
-			"-global_quality:v:0", "23",
+			"-crf:v:0", "23",
 		)
 	}
 
+	if audioCodec == "aac" {
+		args = append(args, "-c:a:0", "copy")
+	} else {
+		args = append(args, "-c:a:0", "aac")
+	}
+
 	return append(args,
-		"-c:a:0", "aac",
 		"-movflags", "+faststart",
 		"-hide_banner",
 		"-loglevel", "error",
