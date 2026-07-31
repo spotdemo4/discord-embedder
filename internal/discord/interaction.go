@@ -64,7 +64,21 @@ type embed struct {
 	URL     string `json:"url"`
 	Start   string `json:"start"`
 	End     string `json:"end"`
+	Speed   string `json:"speed"`
 	Spoiler bool   `json:"spoiler"`
+}
+
+func embedSpeedFactor(speed string) (float64, error) {
+	switch speed {
+	case "", embedSpeedNormal:
+		return 1, nil
+	case embedSpeedOneAndHalf:
+		return 1.5, nil
+	case embedSpeedDouble:
+		return 2, nil
+	default:
+		return 0, errors.New("speed must be one of x1, x1.5, or x2")
+	}
 }
 
 func handleEmbed(
@@ -90,7 +104,11 @@ func handleEmbed(
 	if (opts.Start != "" && opts.End == "") || (opts.Start == "" && opts.End != "") {
 		return errors.New("both start and end must be provided")
 	}
-	ctx = slogctx.Append(ctx, "url", opts.URL)
+	speed, err := embedSpeedFactor(opts.Speed)
+	if err != nil {
+		return err
+	}
+	ctx = slogctx.Append(ctx, "url", opts.URL, "speed", speed)
 
 	// Download video
 	v, err := video.Download(ctx, opts.URL)
@@ -110,9 +128,8 @@ func handleEmbed(
 		}
 	}
 
-	// Compress video
 	log.InfoContext(ctx, "compressing")
-	if err = v.Compress(ctx); err != nil {
+	if err = v.Compress(ctx, speed); err != nil {
 		log.ErrorContext(ctx, "could not compress video", "error", err)
 		return err
 	}

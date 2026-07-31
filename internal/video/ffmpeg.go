@@ -10,10 +10,15 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 )
 
-// Compress compresses the video to reduce file size and converts to h264 mp4.
-func (v *Video) Compress(ctx context.Context) error {
+// Compress compresses the video to reduce file size, adjusts its playback speed, and converts it to h264 mp4.
+func (v *Video) Compress(ctx context.Context, factor float64) error {
+	if factor != 1 && factor != 1.5 && factor != 2 {
+		return fmt.Errorf("unsupported playback speed: %s", strconv.FormatFloat(factor, 'f', -1, 64))
+	}
+
 	log := logger.FromContext(ctx)
 	cfg := config.FromContext(ctx)
 
@@ -36,7 +41,7 @@ func (v *Video) Compress(ctx context.Context) error {
 	tempPath, finalName, finalPath := compressionOutputPaths(cfg.TempDir, cfg.FilesDir, v.ID)
 	defer os.Remove(tempPath)
 
-	cmd := exec.CommandContext(ctx, "ffmpeg", compressionArgs(v.Path, tempPath, videoCodec, audioCodec, cfg.Quicksync)...)
+	cmd := exec.CommandContext(ctx, "ffmpeg", compressionArgs(v.Path, tempPath, videoCodec, audioCodec, factor, cfg.Quicksync)...)
 	out, err := cmd.Output()
 	if err != nil {
 		return fmt.Errorf("could not compress video: %w", err)
@@ -65,10 +70,12 @@ func (v *Video) Compress(ctx context.Context) error {
 	return nil
 }
 
-func compressionArgs(input string, output string, videoCodec string, audioCodec string, quicksync bool) []string {
-	transcodeVideo := videoCodec != "h264"
+func compressionArgs(input string, output string, videoCodec string, audioCodec string, factor float64, quicksync bool) []string {
+	adjustSpeed := factor != 1
+	transcodeVideo := adjustSpeed || videoCodec != "h264"
+	transcodeAudio := adjustSpeed || audioCodec != "aac"
 	args := []string{"-y"}
-	if transcodeVideo && quicksync {
+	if !adjustSpeed && transcodeVideo && quicksync {
 		args = append(args,
 			"-hwaccel", "qsv",
 			"-hwaccel_output_format", "qsv",
@@ -82,6 +89,14 @@ func compressionArgs(input string, output string, videoCodec string, audioCodec 
 		"-sn",
 		"-dn",
 	)
+
+	if adjustSpeed {
+		formattedFactor := strconv.FormatFloat(factor, 'f', -1, 64)
+		args = append(args,
+			"-filter:v:0", "setpts=PTS/"+formattedFactor,
+			"-filter:a:0", "atempo="+formattedFactor+",asetpts=PTS-STARTPTS+STARTPTS/"+formattedFactor,
+		)
+	}
 
 	switch {
 	case !transcodeVideo:
@@ -98,10 +113,10 @@ func compressionArgs(input string, output string, videoCodec string, audioCodec 
 		)
 	}
 
-	if audioCodec == "aac" {
-		args = append(args, "-c:a:0", "copy")
-	} else {
+	if transcodeAudio {
 		args = append(args, "-c:a:0", "aac")
+	} else {
+		args = append(args, "-c:a:0", "copy")
 	}
 
 	return append(args,

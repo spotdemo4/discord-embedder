@@ -10,6 +10,12 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
+const (
+	embedSpeedNormal = "x1"
+	embedSpeedOneAndHalf = "x1.5"
+	embedSpeedDouble = "x2"
+)
+
 func New(ctx context.Context) error {
 	log := logger.FromContext(ctx)
 	cfg := config.FromContext(ctx)
@@ -21,42 +27,7 @@ func New(ctx context.Context) error {
 		return err
 	}
 
-	commands := []*discordgo.ApplicationCommand{
-		{
-			Name:        "embed",
-			Description: "Embed a video from a URL",
-			Options: []*discordgo.ApplicationCommandOption{
-				{
-					Name:        "url",
-					Description: "URL of the video to embed",
-					Type:        discordgo.ApplicationCommandOptionString,
-					Required:    true,
-				},
-				{
-					Name:        "start",
-					Description: "Start time of the video in 00:00 format (e.g. 01:30)",
-					Type:        discordgo.ApplicationCommandOptionString,
-					Required:    false,
-				},
-				{
-					Name:        "end",
-					Description: "End time of the video in 00:00 format (e.g. 02:00)",
-					Type:        discordgo.ApplicationCommandOptionString,
-					Required:    false,
-				},
-				{
-					Name:        "spoiler",
-					Description: "Whether to embed the video as a spoiler",
-					Type:        discordgo.ApplicationCommandOptionBoolean,
-					Required:    false,
-				},
-			},
-		},
-		{
-			Name:        "version",
-			Description: "Show application and dependency versions",
-		},
-	}
+	commands := applicationCommands()
 
 	// Add discord handlers
 	session.AddHandler(onInteraction(ctx))
@@ -86,6 +57,56 @@ func New(ctx context.Context) error {
 
 	log.InfoContext(ctx, "discord session closed")
 	return nil
+}
+
+func applicationCommands() []*discordgo.ApplicationCommand {
+	return []*discordgo.ApplicationCommand{
+		{
+			Name:        "embed",
+			Description: "Embed a video from a URL",
+			Options: []*discordgo.ApplicationCommandOption{
+				{
+					Name:        "url",
+					Description: "URL of the video to embed",
+					Type:        discordgo.ApplicationCommandOptionString,
+					Required:    true,
+				},
+				{
+					Name:        "start",
+					Description: "Start time of the video in 00:00 format (e.g. 01:30)",
+					Type:        discordgo.ApplicationCommandOptionString,
+					Required:    false,
+				},
+				{
+					Name:        "end",
+					Description: "End time of the video in 00:00 format (e.g. 02:00)",
+					Type:        discordgo.ApplicationCommandOptionString,
+					Required:    false,
+				},
+				{
+					Name:        "speed",
+					Description: "Playback speed of the embedded video",
+					Type:        discordgo.ApplicationCommandOptionString,
+					Required:    false,
+					Choices: []*discordgo.ApplicationCommandOptionChoice{
+						{Name: embedSpeedNormal, Value: embedSpeedNormal},
+						{Name: embedSpeedOneAndHalf, Value: embedSpeedOneAndHalf},
+						{Name: embedSpeedDouble, Value: embedSpeedDouble},
+					},
+				},
+				{
+					Name:        "spoiler",
+					Description: "Whether to embed the video as a spoiler",
+					Type:        discordgo.ApplicationCommandOptionBoolean,
+					Required:    false,
+				},
+			},
+		},
+		{
+			Name:        "version",
+			Description: "Show application and dependency versions",
+		},
+	}
 }
 
 // errMsg attempts to parse an exec.ExitError to return a more useful error message.

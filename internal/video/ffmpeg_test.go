@@ -15,6 +15,7 @@ func TestCompressionArgs(t *testing.T) {
 		name       string
 		videoCodec string
 		audioCodec string
+		factor     float64
 		quicksync  bool
 		want       []string
 	}{
@@ -22,6 +23,7 @@ func TestCompressionArgs(t *testing.T) {
 			name:       "copy h264 and aac",
 			videoCodec: "h264",
 			audioCodec: "aac",
+			factor:     1,
 			want: []string{
 				"-y",
 				"-i", "/videos/input.webm",
@@ -41,6 +43,7 @@ func TestCompressionArgs(t *testing.T) {
 			name:       "copy h264 and transcode opus with quicksync enabled",
 			videoCodec: "h264",
 			audioCodec: "opus",
+			factor:     1,
 			quicksync:  true,
 			want: []string{
 				"-y",
@@ -61,6 +64,7 @@ func TestCompressionArgs(t *testing.T) {
 			name:       "transcode vp9 and copy aac",
 			videoCodec: "vp9",
 			audioCodec: "aac",
+			factor:     1,
 			want: []string{
 				"-y",
 				"-i", "/videos/input.webm",
@@ -81,6 +85,7 @@ func TestCompressionArgs(t *testing.T) {
 			name:       "transcode vp9 and opus",
 			videoCodec: "vp9",
 			audioCodec: "opus",
+			factor:     1,
 			want: []string{
 				"-y",
 				"-i", "/videos/input.webm",
@@ -101,6 +106,7 @@ func TestCompressionArgs(t *testing.T) {
 			name:       "transcode vp9 with quicksync and copy aac",
 			videoCodec: "vp9",
 			audioCodec: "aac",
+			factor:     1,
 			quicksync:  true,
 			want: []string{
 				"-y",
@@ -124,6 +130,7 @@ func TestCompressionArgs(t *testing.T) {
 			name:       "transcode vp9 and opus with quicksync",
 			videoCodec: "vp9",
 			audioCodec: "opus",
+			factor:     1,
 			quicksync:  true,
 			want: []string{
 				"-y",
@@ -143,6 +150,53 @@ func TestCompressionArgs(t *testing.T) {
 				"/tmp/output.mp4",
 			},
 		},
+		{
+			name:       "speed up compatible streams",
+			videoCodec: "h264",
+			audioCodec: "aac",
+			factor:     1.5,
+			want: []string{
+				"-y",
+				"-i", "/videos/input.webm",
+				"-map", "0:v:0",
+				"-map", "0:a:0",
+				"-sn",
+				"-dn",
+				"-filter:v:0", "setpts=PTS/1.5",
+				"-filter:a:0", "atempo=1.5,asetpts=PTS-STARTPTS+STARTPTS/1.5",
+				"-c:v:0", "libx264",
+				"-crf:v:0", "23",
+				"-c:a:0", "aac",
+				"-movflags", "+faststart",
+				"-hide_banner",
+				"-loglevel", "error",
+				"/tmp/output.mp4",
+			},
+		},
+		{
+			name:       "speed up compatible streams with quicksync",
+			videoCodec: "h264",
+			audioCodec: "aac",
+			factor:     2,
+			quicksync:  true,
+			want: []string{
+				"-y",
+				"-i", "/videos/input.webm",
+				"-map", "0:v:0",
+				"-map", "0:a:0",
+				"-sn",
+				"-dn",
+				"-filter:v:0", "setpts=PTS/2",
+				"-filter:a:0", "atempo=2,asetpts=PTS-STARTPTS+STARTPTS/2",
+				"-c:v:0", "h264_qsv",
+				"-global_quality:v:0", "23",
+				"-c:a:0", "aac",
+				"-movflags", "+faststart",
+				"-hide_banner",
+				"-loglevel", "error",
+				"/tmp/output.mp4",
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -152,6 +206,7 @@ func TestCompressionArgs(t *testing.T) {
 				"/tmp/output.mp4",
 				tt.videoCodec,
 				tt.audioCodec,
+				tt.factor,
 				tt.quicksync,
 			)
 			if !reflect.DeepEqual(got, tt.want) {
@@ -206,7 +261,7 @@ printf encoded > "$last"
 		TempDir:  tempDir,
 	})
 	video := &Video{ID: id, File: File{Name: filepath.Base(sourcePath), Path: sourcePath}}
-	if err := video.Compress(ctx); err != nil {
+	if err := video.Compress(ctx, 1); err != nil {
 		t.Fatalf("Compress() error = %v", err)
 	}
 
@@ -253,7 +308,7 @@ func TestCompressProbeFailurePreservesSource(t *testing.T) {
 		TempDir:  tempDir,
 	})
 	video := &Video{ID: id, File: File{Name: filepath.Base(sourcePath), Path: sourcePath}}
-	if err := video.Compress(ctx); err == nil {
+	if err := video.Compress(ctx, 1); err == nil {
 		t.Fatal("Compress() expected error")
 	}
 	if _, err := os.Stat(ffmpegCalled); !os.IsNotExist(err) {
@@ -292,7 +347,7 @@ esac
 		TempDir:  tempDir,
 	})
 	video := &Video{ID: id, File: File{Name: filepath.Base(sourcePath), Path: sourcePath}}
-	err := video.Compress(ctx)
+	err := video.Compress(ctx, 1)
 	if err == nil || !strings.Contains(err.Error(), "media contains no audio stream") {
 		t.Fatalf("Compress() error = %v, want missing audio error", err)
 	}
@@ -335,7 +390,7 @@ exit 1
 		TempDir:  tempDir,
 	})
 	video := &Video{ID: id, File: File{Name: filepath.Base(sourcePath), Path: sourcePath}}
-	if err := video.Compress(ctx); err == nil {
+	if err := video.Compress(ctx, 1); err == nil {
 		t.Fatal("Compress() expected error")
 	}
 	if _, err := os.Stat(sourcePath); err != nil {
@@ -388,7 +443,7 @@ printf encoded > "$last"
 		TempDir:  tempDir,
 	})
 	video := &Video{ID: id, File: File{Name: filepath.Base(sourcePath), Path: sourcePath}}
-	err := video.Compress(ctx)
+	err := video.Compress(ctx, 1)
 	if err == nil || !strings.Contains(err.Error(), "compressed video must contain audio") {
 		t.Fatalf("Compress() error = %v, want output audio error", err)
 	}
@@ -400,6 +455,245 @@ printf encoded > "$last"
 	}
 	if _, err = os.Stat(filepath.Join(filesDir, id+".mp4")); !os.IsNotExist(err) {
 		t.Errorf("canonical output exists, error = %v", err)
+	}
+}
+
+func TestCompressChangesPlaybackRate(t *testing.T) {
+	filesDir := t.TempDir()
+	tempDir := t.TempDir()
+	id := "video-id"
+	sourcePath := filepath.Join(filesDir, id+".webm")
+	if err := os.WriteFile(sourcePath, []byte("source"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	argsPath := filepath.Join(t.TempDir(), "ffmpeg-args")
+
+	writeFakeCommand(t, "ffprobe", `
+case " $* " in
+  *" -select_streams v:0 "*) printf 'vp9\n' ;;
+  *" -select_streams a:0 "*) printf 'opus\n' ;;
+  *) exit 2 ;;
+esac
+`)
+	writeFakeCommand(t, "ffmpeg", `
+last=""
+for arg in "$@"; do
+  printf '%s\n' "$arg" >> "$FAKE_FFMPEG_ARGS"
+  last="$arg"
+done
+printf encoded > "$last"
+`)
+	t.Setenv("FAKE_FFMPEG_ARGS", argsPath)
+
+	ctx := config.WithConfig(context.Background(), &config.Config{
+		FilesDir: filesDir,
+		TempDir:  tempDir,
+	})
+	video := &Video{ID: id, File: File{Name: filepath.Base(sourcePath), Path: sourcePath}}
+	if err := video.Compress(ctx, 1.5); err != nil {
+		t.Fatalf("Compress() error = %v", err)
+	}
+
+	finalPath := filepath.Join(filesDir, id+".mp4")
+	if video.Name != id+".mp4" || video.Path != finalPath {
+		t.Errorf("Video = name %q path %q, want name %q path %q", video.Name, video.Path, id+".mp4", finalPath)
+	}
+	if _, err := os.Stat(finalPath); err != nil {
+		t.Errorf("final video missing: %v", err)
+	}
+	if _, err := os.Stat(sourcePath); !os.IsNotExist(err) {
+		t.Errorf("source still exists, error = %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(tempDir, id+".encode.mp4")); !os.IsNotExist(err) {
+		t.Errorf("temporary output still exists, error = %v", err)
+	}
+
+	args, err := os.ReadFile(argsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := string(args)
+	for _, want := range []string{
+		"-filter:v:0\nsetpts=PTS/1.5\n",
+		"-filter:a:0\natempo=1.5,asetpts=PTS-STARTPTS+STARTPTS/1.5\n",
+		"-c:v:0\nlibx264\n",
+		"-c:a:0\naac\n",
+	} {
+		if !strings.Contains(command, want) {
+			t.Errorf("ffmpeg args do not contain %q: %q", want, command)
+		}
+	}
+}
+
+func TestCompressInvalidFactorPreservesSource(t *testing.T) {
+	filesDir := t.TempDir()
+	tempDir := t.TempDir()
+	id := "video-id"
+	sourcePath := filepath.Join(filesDir, id+".webm")
+	if err := os.WriteFile(sourcePath, []byte("source"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	ffprobeCalled := filepath.Join(t.TempDir(), "ffprobe-called")
+
+	writeFakeCommand(t, "ffprobe", `printf called > "$FAKE_FFPROBE_CALLED"`)
+	t.Setenv("FAKE_FFPROBE_CALLED", ffprobeCalled)
+
+	ctx := config.WithConfig(context.Background(), &config.Config{
+		FilesDir: filesDir,
+		TempDir:  tempDir,
+	})
+	video := &Video{ID: id, File: File{Name: filepath.Base(sourcePath), Path: sourcePath}}
+	err := video.Compress(ctx, 3)
+	if err == nil || !strings.Contains(err.Error(), "unsupported playback speed") {
+		t.Fatalf("Compress() error = %v, want unsupported speed error", err)
+	}
+	if _, err = os.Stat(ffprobeCalled); !os.IsNotExist(err) {
+		t.Errorf("ffprobe was called, error = %v", err)
+	}
+	if _, err = os.Stat(sourcePath); err != nil {
+		t.Errorf("source was removed: %v", err)
+	}
+	if video.Path != sourcePath || video.Name != filepath.Base(sourcePath) {
+		t.Errorf("Video changed after failure: name %q path %q", video.Name, video.Path)
+	}
+}
+
+func TestCompressAcceleratedMissingAudioPreservesSource(t *testing.T) {
+	filesDir := t.TempDir()
+	tempDir := t.TempDir()
+	id := "video-id"
+	sourcePath := filepath.Join(filesDir, id+".webm")
+	if err := os.WriteFile(sourcePath, []byte("source"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	ffmpegCalled := filepath.Join(t.TempDir(), "ffmpeg-called")
+
+	writeFakeCommand(t, "ffprobe", `
+case " $* " in
+  *" -select_streams v:0 "*) printf 'vp9\n' ;;
+  *" -select_streams a:0 "*) exit 0 ;;
+  *) exit 2 ;;
+esac
+`)
+	writeFakeCommand(t, "ffmpeg", `printf called > "$FAKE_FFMPEG_CALLED"`)
+	t.Setenv("FAKE_FFMPEG_CALLED", ffmpegCalled)
+
+	ctx := config.WithConfig(context.Background(), &config.Config{
+		FilesDir: filesDir,
+		TempDir:  tempDir,
+	})
+	video := &Video{ID: id, File: File{Name: filepath.Base(sourcePath), Path: sourcePath}}
+	err := video.Compress(ctx, 1.5)
+	if err == nil || !strings.Contains(err.Error(), "media contains no audio stream") {
+		t.Fatalf("Compress() error = %v, want missing audio error", err)
+	}
+	if _, err = os.Stat(ffmpegCalled); !os.IsNotExist(err) {
+		t.Errorf("ffmpeg was called, error = %v", err)
+	}
+	if _, err = os.Stat(sourcePath); err != nil {
+		t.Errorf("source was removed: %v", err)
+	}
+}
+
+func TestCompressAcceleratedFFmpegFailurePreservesSource(t *testing.T) {
+	filesDir := t.TempDir()
+	tempDir := t.TempDir()
+	id := "video-id"
+	sourcePath := filepath.Join(filesDir, id+".webm")
+	tempPath := filepath.Join(tempDir, id+".encode.mp4")
+	if err := os.WriteFile(sourcePath, []byte("source"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	writeFakeCommand(t, "ffprobe", `
+case " $* " in
+  *" -select_streams v:0 "*) printf 'vp9\n' ;;
+  *" -select_streams a:0 "*) printf 'opus\n' ;;
+  *) exit 2 ;;
+esac
+`)
+	writeFakeCommand(t, "ffmpeg", `
+last=""
+for arg in "$@"; do
+  last="$arg"
+done
+printf partial > "$last"
+exit 1
+`)
+
+	ctx := config.WithConfig(context.Background(), &config.Config{
+		FilesDir: filesDir,
+		TempDir:  tempDir,
+	})
+	video := &Video{ID: id, File: File{Name: filepath.Base(sourcePath), Path: sourcePath}}
+	if err := video.Compress(ctx, 2); err == nil {
+		t.Fatal("Compress() expected error")
+	}
+	if _, err := os.Stat(sourcePath); err != nil {
+		t.Errorf("source was removed: %v", err)
+	}
+	if _, err := os.Stat(tempPath); !os.IsNotExist(err) {
+		t.Errorf("temporary output still exists, error = %v", err)
+	}
+	if video.Path != sourcePath || video.Name != filepath.Base(sourcePath) {
+		t.Errorf("Video changed after failure: name %q path %q", video.Name, video.Path)
+	}
+}
+
+func TestCompressAcceleratedRejectsOutputWithoutAudio(t *testing.T) {
+	filesDir := t.TempDir()
+	tempDir := t.TempDir()
+	id := "video-id"
+	sourcePath := filepath.Join(filesDir, id+".webm")
+	tempPath := filepath.Join(tempDir, id+".encode.mp4")
+	if err := os.WriteFile(sourcePath, []byte("source"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	writeFakeCommand(t, "ffprobe", `
+last=""
+for arg in "$@"; do
+  last="$arg"
+done
+case " $* " in
+  *" -select_streams v:0 "*) printf 'vp9\n' ;;
+  *" -select_streams a:0 "*)
+    if [ "$last" != "$FAKE_ENCODE_PATH" ]; then
+      printf 'opus\n'
+    fi
+    ;;
+  *) exit 2 ;;
+esac
+`)
+	writeFakeCommand(t, "ffmpeg", `
+last=""
+for arg in "$@"; do
+  last="$arg"
+done
+printf encoded > "$last"
+`)
+	t.Setenv("FAKE_ENCODE_PATH", tempPath)
+
+	ctx := config.WithConfig(context.Background(), &config.Config{
+		FilesDir: filesDir,
+		TempDir:  tempDir,
+	})
+	video := &Video{ID: id, File: File{Name: filepath.Base(sourcePath), Path: sourcePath}}
+	err := video.Compress(ctx, 1.5)
+	if err == nil || !strings.Contains(err.Error(), "compressed video must contain audio") {
+		t.Fatalf("Compress() error = %v, want output audio error", err)
+	}
+	if _, err = os.Stat(sourcePath); err != nil {
+		t.Errorf("source was removed: %v", err)
+	}
+	if _, err = os.Stat(tempPath); !os.IsNotExist(err) {
+		t.Errorf("temporary output still exists, error = %v", err)
+	}
+	if _, err = os.Stat(filepath.Join(filesDir, id+".mp4")); !os.IsNotExist(err) {
+		t.Errorf("canonical output exists, error = %v", err)
+	}
+	if video.Path != sourcePath || video.Name != filepath.Base(sourcePath) {
+		t.Errorf("Video changed after failure: name %q path %q", video.Name, video.Path)
 	}
 }
 

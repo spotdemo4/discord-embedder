@@ -90,7 +90,7 @@ func handleMessage(
 
 	// Compress video
 	log.InfoContext(ctx, "compressing")
-	if err = v.Compress(ctx); err != nil {
+	if err = v.Compress(ctx, 1); err != nil {
 		log.ErrorContext(ctx, "could not compress video", "error", err)
 		return nil, err
 	}
