@@ -24,6 +24,10 @@ func Download(ctx context.Context, downloadURL string) (*Video, error) {
 	if err != nil {
 		return nil, err
 	}
+	originalURL, err := sanitizeOriginalURL(downloadURL)
+	if err != nil {
+		return nil, err
+	}
 
 	// Generate unique ID for video
 	id := uuid.New().String()
@@ -38,7 +42,7 @@ func Download(ctx context.Context, downloadURL string) (*Video, error) {
 	}()
 
 	// Download video using yt-dlp
-	path, err := ytdlp(ctx, link, id)
+	path, err := ytdlp(ctx, link, downloadURL, id)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +50,8 @@ func Download(ctx context.Context, downloadURL string) (*Video, error) {
 	log.DebugContext(ctx, "yt-dlp", "path", path)
 
 	v := &Video{
-		ID: id,
+		ID:          id,
+		originalURL: originalURL,
 		File: File{
 			Name: filepath.Base(path),
 			Path: path,
@@ -66,7 +71,7 @@ func Download(ctx context.Context, downloadURL string) (*Video, error) {
 	return v, nil
 }
 
-func ytdlp(ctx context.Context, link *url.URL, id string) (string, error) {
+func ytdlp(ctx context.Context, link *url.URL, downloadURL string, id string) (string, error) {
 	log := logger.FromContext(ctx)
 	cfg := config.FromContext(ctx)
 
@@ -75,7 +80,7 @@ func ytdlp(ctx context.Context, link *url.URL, id string) (string, error) {
 	if username != "" && password != "" {
 		log.InfoContext(ctx, "downloading", "credentials", true)
 
-		path, err := runYTDLP(ctx, ytdlpArgs(cfg.FilesDir, id, link.String(), username, password), cfg.FilesDir, id)
+		path, err := runYTDLP(ctx, ytdlpArgs(cfg.FilesDir, id, downloadURL, username, password), cfg.FilesDir, id)
 		if err == nil {
 			return path, nil
 		}
@@ -87,7 +92,7 @@ func ytdlp(ctx context.Context, link *url.URL, id string) (string, error) {
 	}
 
 	log.InfoContext(ctx, "downloading", "credentials", false)
-	path, err := runYTDLP(ctx, ytdlpArgs(cfg.FilesDir, id, link.String(), "", ""), cfg.FilesDir, id)
+	path, err := runYTDLP(ctx, ytdlpArgs(cfg.FilesDir, id, downloadURL, "", ""), cfg.FilesDir, id)
 	if err != nil {
 		if cleanupErr := cleanupDownloadArtifacts(cfg.FilesDir, id); cleanupErr != nil {
 			return "", errors.Join(err, cleanupErr)

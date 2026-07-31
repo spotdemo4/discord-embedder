@@ -15,5 +15,8 @@
     <video id="player" crossorigin="" controls="" poster="{{.ImageURL}}">
       <source src="{{.VideoURL}}" />
     </video>
+    {{if .SourceURL}}
+    <p><a href="{{.SourceURL}}" rel="noreferrer">View original</a></p>
+    {{end}}
   </body>
 </html>

@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"discord-embedder/internal/config"
+	"discord-embedder/internal/logger"
 	"discord-embedder/internal/video"
 	"embed"
 	"fmt"
@@ -12,10 +13,11 @@ import (
 )
 
 type Page struct {
-	ImageURL string
-	VideoURL string
-	Width    string
-	Height   string
+	ImageURL  string
+	VideoURL  string
+	SourceURL string
+	Width     string
+	Height    string
 }
 
 func homeHandler(ctx context.Context, home embed.FS) func(http.ResponseWriter, *http.Request) {
@@ -48,12 +50,20 @@ func homeHandler(ctx context.Context, home embed.FS) func(http.ResponseWriter, *
 				return
 			}
 
+			// Get original URL
+			sourceURL, err := file.OriginalURL(ctx)
+			if err != nil {
+				logger.FromContext(ctx).WarnContext(ctx, "could not get original URL", "video", id, "error", err)
+				sourceURL = ""
+			}
+
 			// Generate page
 			page := Page{
-				ImageURL: fmt.Sprintf("%s/files/%s", cfg.Host, file.Thumbnail.Name),
-				VideoURL: fmt.Sprintf("%s/files/%s", cfg.Host, file.Name),
-				Width:    width,
-				Height:   height,
+				ImageURL:  fmt.Sprintf("%s/files/%s", cfg.Host, file.Thumbnail.Name),
+				VideoURL:  fmt.Sprintf("%s/files/%s", cfg.Host, file.Name),
+				SourceURL: sourceURL,
+				Width:     width,
+				Height:    height,
 			}
 			t, err := template.ParseFS(home, "templates/home.html")
 			if err != nil {

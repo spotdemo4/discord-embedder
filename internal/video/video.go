@@ -19,11 +19,14 @@ type Thumbnail struct {
 	File
 }
 
+const originalURLMetadataKey = "original_url"
+
 type Video struct {
 	File
 
-	ID        string
-	Thumbnail *Thumbnail
+	ID          string
+	Thumbnail   *Thumbnail
+	originalURL string
 }
 
 func Get(ctx context.Context, id string) (*Video, error) {

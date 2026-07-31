@@ -41,7 +41,7 @@ func (v *Video) Compress(ctx context.Context, factor float64) error {
 	tempPath, finalName, finalPath := compressionOutputPaths(cfg.TempDir, cfg.FilesDir, v.ID)
 	defer os.Remove(tempPath)
 
-	cmd := exec.CommandContext(ctx, "ffmpeg", compressionArgs(v.Path, tempPath, videoCodec, audioCodec, factor, cfg.Quicksync)...)
+	cmd := exec.CommandContext(ctx, "ffmpeg", compressionArgs(v.Path, tempPath, videoCodec, audioCodec, factor, cfg.Quicksync, v.originalURL)...)
 	out, err := cmd.Output()
 	if err != nil {
 		return fmt.Errorf("could not compress video: %w", err)
@@ -70,7 +70,7 @@ func (v *Video) Compress(ctx context.Context, factor float64) error {
 	return nil
 }
 
-func compressionArgs(input string, output string, videoCodec string, audioCodec string, factor float64, quicksync bool) []string {
+func compressionArgs(input string, output string, videoCodec string, audioCodec string, factor float64, quicksync bool, originalURL string) []string {
 	adjustSpeed := factor != 1
 	transcodeVideo := adjustSpeed || videoCodec != "h264"
 	transcodeAudio := adjustSpeed || audioCodec != "aac"
@@ -88,6 +88,8 @@ func compressionArgs(input string, output string, videoCodec string, audioCodec 
 		"-map", "0:a:0",
 		"-sn",
 		"-dn",
+		"-map_metadata", "-1",
+		"-map_chapters", "-1",
 	)
 
 	if adjustSpeed {
@@ -119,8 +121,12 @@ func compressionArgs(input string, output string, videoCodec string, audioCodec 
 		args = append(args, "-c:a:0", "copy")
 	}
 
+	if originalURL != "" {
+		args = append(args, "-metadata", originalURLMetadataKey+"="+originalURL)
+	}
+
 	return append(args,
-		"-movflags", "+faststart",
+		"-movflags", "+faststart+use_metadata_tags",
 		"-hide_banner",
 		"-loglevel", "error",
 		output,
@@ -168,6 +174,8 @@ func trimArgs(input string, output string, start string, end string) []string {
 		"-map", "0:a:0",
 		"-sn",
 		"-dn",
+		"-map_metadata", "-1",
+		"-map_chapters", "-1",
 		"-hide_banner",
 		"-loglevel", "error",
 		output,

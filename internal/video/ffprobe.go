@@ -34,6 +34,42 @@ func parseCodecProbe(output string) string {
 	return strings.TrimSpace(output)
 }
 
+// OriginalURL returns the sanitized URL used to download the video.
+func (v *Video) OriginalURL(ctx context.Context) (string, error) {
+	if v.originalURL != "" {
+		return v.originalURL, nil
+	}
+
+	originalURL, err := probeFormatTag(ctx, v.Path, originalURLMetadataKey)
+	if err != nil || originalURL == "" {
+		return originalURL, err
+	}
+
+	originalURL, err = sanitizeOriginalURL(originalURL)
+	if err != nil {
+		return "", err
+	}
+	v.originalURL = originalURL
+	return originalURL, nil
+}
+
+func probeFormatTag(ctx context.Context, path string, tag string) (string, error) {
+	cmd := exec.CommandContext(ctx,
+		"ffprobe",
+		"-v", "error",
+		"-show_entries", "format_tags="+tag,
+		"-of", "default=noprint_wrappers=1:nokey=1",
+		path,
+	)
+
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(string(out)), nil
+}
+
 // HasAudio returns whether the video has an audio stream.
 func (v *Video) HasAudio(ctx context.Context) (bool, error) {
 	return hasAudio(ctx, v.Path)

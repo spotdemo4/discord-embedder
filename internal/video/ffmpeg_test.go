@@ -31,9 +31,12 @@ func TestCompressionArgs(t *testing.T) {
 				"-map", "0:a:0",
 				"-sn",
 				"-dn",
+				"-map_metadata", "-1",
+				"-map_chapters", "-1",
 				"-c:v:0", "copy",
 				"-c:a:0", "copy",
-				"-movflags", "+faststart",
+				"-metadata", "original_url=https://example.com/video",
+				"-movflags", "+faststart+use_metadata_tags",
 				"-hide_banner",
 				"-loglevel", "error",
 				"/tmp/output.mp4",
@@ -52,9 +55,12 @@ func TestCompressionArgs(t *testing.T) {
 				"-map", "0:a:0",
 				"-sn",
 				"-dn",
+				"-map_metadata", "-1",
+				"-map_chapters", "-1",
 				"-c:v:0", "copy",
 				"-c:a:0", "aac",
-				"-movflags", "+faststart",
+				"-metadata", "original_url=https://example.com/video",
+				"-movflags", "+faststart+use_metadata_tags",
 				"-hide_banner",
 				"-loglevel", "error",
 				"/tmp/output.mp4",
@@ -72,10 +78,13 @@ func TestCompressionArgs(t *testing.T) {
 				"-map", "0:a:0",
 				"-sn",
 				"-dn",
+				"-map_metadata", "-1",
+				"-map_chapters", "-1",
 				"-c:v:0", "libx264",
 				"-crf:v:0", "23",
 				"-c:a:0", "copy",
-				"-movflags", "+faststart",
+				"-metadata", "original_url=https://example.com/video",
+				"-movflags", "+faststart+use_metadata_tags",
 				"-hide_banner",
 				"-loglevel", "error",
 				"/tmp/output.mp4",
@@ -93,10 +102,13 @@ func TestCompressionArgs(t *testing.T) {
 				"-map", "0:a:0",
 				"-sn",
 				"-dn",
+				"-map_metadata", "-1",
+				"-map_chapters", "-1",
 				"-c:v:0", "libx264",
 				"-crf:v:0", "23",
 				"-c:a:0", "aac",
-				"-movflags", "+faststart",
+				"-metadata", "original_url=https://example.com/video",
+				"-movflags", "+faststart+use_metadata_tags",
 				"-hide_banner",
 				"-loglevel", "error",
 				"/tmp/output.mp4",
@@ -117,10 +129,13 @@ func TestCompressionArgs(t *testing.T) {
 				"-map", "0:a:0",
 				"-sn",
 				"-dn",
+				"-map_metadata", "-1",
+				"-map_chapters", "-1",
 				"-c:v:0", "h264_qsv",
 				"-global_quality:v:0", "23",
 				"-c:a:0", "copy",
-				"-movflags", "+faststart",
+				"-metadata", "original_url=https://example.com/video",
+				"-movflags", "+faststart+use_metadata_tags",
 				"-hide_banner",
 				"-loglevel", "error",
 				"/tmp/output.mp4",
@@ -141,10 +156,13 @@ func TestCompressionArgs(t *testing.T) {
 				"-map", "0:a:0",
 				"-sn",
 				"-dn",
+				"-map_metadata", "-1",
+				"-map_chapters", "-1",
 				"-c:v:0", "h264_qsv",
 				"-global_quality:v:0", "23",
 				"-c:a:0", "aac",
-				"-movflags", "+faststart",
+				"-metadata", "original_url=https://example.com/video",
+				"-movflags", "+faststart+use_metadata_tags",
 				"-hide_banner",
 				"-loglevel", "error",
 				"/tmp/output.mp4",
@@ -162,12 +180,15 @@ func TestCompressionArgs(t *testing.T) {
 				"-map", "0:a:0",
 				"-sn",
 				"-dn",
+				"-map_metadata", "-1",
+				"-map_chapters", "-1",
 				"-filter:v:0", "setpts=PTS/1.5",
 				"-filter:a:0", "atempo=1.5,asetpts=PTS-STARTPTS+STARTPTS/1.5",
 				"-c:v:0", "libx264",
 				"-crf:v:0", "23",
 				"-c:a:0", "aac",
-				"-movflags", "+faststart",
+				"-metadata", "original_url=https://example.com/video",
+				"-movflags", "+faststart+use_metadata_tags",
 				"-hide_banner",
 				"-loglevel", "error",
 				"/tmp/output.mp4",
@@ -186,12 +207,15 @@ func TestCompressionArgs(t *testing.T) {
 				"-map", "0:a:0",
 				"-sn",
 				"-dn",
+				"-map_metadata", "-1",
+				"-map_chapters", "-1",
 				"-filter:v:0", "setpts=PTS/2",
 				"-filter:a:0", "atempo=2,asetpts=PTS-STARTPTS+STARTPTS/2",
 				"-c:v:0", "h264_qsv",
 				"-global_quality:v:0", "23",
 				"-c:a:0", "aac",
-				"-movflags", "+faststart",
+				"-metadata", "original_url=https://example.com/video",
+				"-movflags", "+faststart+use_metadata_tags",
 				"-hide_banner",
 				"-loglevel", "error",
 				"/tmp/output.mp4",
@@ -208,11 +232,21 @@ func TestCompressionArgs(t *testing.T) {
 				tt.audioCodec,
 				tt.factor,
 				tt.quicksync,
+				"https://example.com/video",
 			)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("compressionArgs() = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestCompressionArgsWithoutOriginalURL(t *testing.T) {
+	args := compressionArgs("/videos/input.webm", "/tmp/output.mp4", "h264", "aac", 1, false, "")
+	for _, arg := range args {
+		if arg == "-metadata" {
+			t.Fatal("compressionArgs() added metadata for an empty original URL")
+		}
 	}
 }
 
@@ -260,7 +294,11 @@ printf encoded > "$last"
 		FilesDir: filesDir,
 		TempDir:  tempDir,
 	})
-	video := &Video{ID: id, File: File{Name: filepath.Base(sourcePath), Path: sourcePath}}
+	video := &Video{
+		ID:          id,
+		File:        File{Name: filepath.Base(sourcePath), Path: sourcePath},
+		originalURL: "https://example.com/video",
+	}
 	if err := video.Compress(ctx, 1); err != nil {
 		t.Fatalf("Compress() error = %v", err)
 	}
@@ -286,6 +324,18 @@ printf encoded > "$last"
 	}
 	if !strings.Contains(command, "-c:a:0\ncopy\n") {
 		t.Errorf("ffmpeg args do not copy audio: %q", command)
+	}
+	if !strings.Contains(command, "-map_metadata\n-1\n") {
+		t.Errorf("ffmpeg args do not clear inherited metadata: %q", command)
+	}
+	if !strings.Contains(command, "-map_chapters\n-1\n") {
+		t.Errorf("ffmpeg args do not clear inherited chapters: %q", command)
+	}
+	if !strings.Contains(command, "-metadata\noriginal_url=https://example.com/video\n") {
+		t.Errorf("ffmpeg args do not set original URL: %q", command)
+	}
+	if !strings.Contains(command, "-movflags\n+faststart+use_metadata_tags\n") {
+		t.Errorf("ffmpeg args do not enable MP4 metadata tags: %q", command)
 	}
 }
 
@@ -707,6 +757,8 @@ func TestTrimArgs(t *testing.T) {
 		"-map", "0:a:0",
 		"-sn",
 		"-dn",
+		"-map_metadata", "-1",
+				"-map_chapters", "-1",
 		"-hide_banner",
 		"-loglevel", "error",
 		"/tmp/output.mkv",

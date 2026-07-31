@@ -63,6 +63,42 @@ func TestYTDLPArgs(t *testing.T) {
 	}
 }
 
+func TestYTDLPPreservesDownloadURL(t *testing.T) {
+	filesDir := t.TempDir()
+	argsPath := filepath.Join(t.TempDir(), "download-url")
+	id := "video-id"
+	downloadURL := "https://example.com/watch?token=a%2Fb&token=c#fragment"
+	writeFakeYTDLP(t, `
+last=""
+for arg in "$@"; do
+  last="$arg"
+done
+printf '%s' "$last" > "$FAKE_ARGS_PATH"
+printf video > "$FAKE_FILES_DIR/$FAKE_ID.webm"
+printf '%s\n' "$FAKE_FILES_DIR/$FAKE_ID.webm"
+`)
+	t.Setenv("FAKE_ARGS_PATH", argsPath)
+	t.Setenv("FAKE_FILES_DIR", filesDir)
+	t.Setenv("FAKE_ID", id)
+
+	link, err := url.Parse(downloadURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := config.WithConfig(context.Background(), &config.Config{FilesDir: filesDir})
+	if _, err = ytdlp(ctx, link, downloadURL, id); err != nil {
+		t.Fatalf("ytdlp() error = %v", err)
+	}
+
+	got, err := os.ReadFile(argsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != downloadURL {
+		t.Errorf("yt-dlp URL = %q, want %q", got, downloadURL)
+	}
+}
+
 func TestParseFinalPath(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -197,7 +233,7 @@ printf '%s\n' "$FAKE_FILES_DIR/$FAKE_ID.webm"
 		t.Fatal(err)
 	}
 
-	got, err := ytdlp(ctx, link, id)
+	got, err := ytdlp(ctx, link, link.String(), id)
 	if err != nil {
 		t.Fatalf("ytdlp() error = %v", err)
 	}
@@ -226,7 +262,7 @@ exit 1
 		t.Fatal(err)
 	}
 
-	if _, err = ytdlp(ctx, link, id); err == nil {
+	if _, err = ytdlp(ctx, link, link.String(), id); err == nil {
 		t.Fatal("ytdlp() expected error")
 	}
 	if _, err = os.Stat(filepath.Join(filesDir, id+".webm.part")); !os.IsNotExist(err) {

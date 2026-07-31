@@ -79,6 +79,80 @@ func TestCodecProbeFailure(t *testing.T) {
 	}
 }
 
+func TestOriginalURL(t *testing.T) {
+	t.Run("cached", func(t *testing.T) {
+		writeFakeCommand(t, "ffprobe", "exit 1")
+		video := &Video{originalURL: "https://example.com/video"}
+
+		got, err := video.OriginalURL(context.Background())
+		if err != nil {
+			t.Fatalf("OriginalURL() error = %v", err)
+		}
+		if got != "https://example.com/video" {
+			t.Errorf("OriginalURL() = %q, want %q", got, "https://example.com/video")
+		}
+	})
+
+	t.Run("probes and sanitizes metadata", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "video with spaces.mp4")
+		writeFakeCommand(t, "ffprobe", `
+last=""
+for arg in "$@"; do
+  last="$arg"
+done
+if [ "$last" != "$FAKE_VIDEO_PATH" ]; then
+  exit 2
+fi
+case " $* " in
+  *" -show_entries format_tags=original_url "*) ;;
+  *) exit 3 ;;
+esac
+printf '%s\n' 'https://x.com/user/status/123?s=20&t=tracking#fragment'
+`)
+		t.Setenv("FAKE_VIDEO_PATH", path)
+		video := &Video{File: File{Path: path}}
+
+		got, err := video.OriginalURL(context.Background())
+		if err != nil {
+			t.Fatalf("OriginalURL() error = %v", err)
+		}
+		if got != "https://x.com/user/status/123" {
+			t.Errorf("OriginalURL() = %q, want %q", got, "https://x.com/user/status/123")
+		}
+	})
+
+	t.Run("missing metadata", func(t *testing.T) {
+		writeFakeCommand(t, "ffprobe", "exit 0")
+		video := &Video{File: File{Path: "/videos/input.mp4"}}
+
+		got, err := video.OriginalURL(context.Background())
+		if err != nil {
+			t.Fatalf("OriginalURL() error = %v", err)
+		}
+		if got != "" {
+			t.Errorf("OriginalURL() = %q, want empty", got)
+		}
+	})
+
+	t.Run("rejects unsafe metadata", func(t *testing.T) {
+		writeFakeCommand(t, "ffprobe", "printf '%s\\n' 'javascript:alert(1)'")
+		video := &Video{File: File{Path: "/videos/input.mp4"}}
+
+		if _, err := video.OriginalURL(context.Background()); err == nil {
+			t.Fatal("OriginalURL() expected error")
+		}
+	})
+
+	t.Run("probe failure", func(t *testing.T) {
+		writeFakeCommand(t, "ffprobe", "exit 1")
+		video := &Video{File: File{Path: "/videos/input.mp4"}}
+
+		if _, err := video.OriginalURL(context.Background()); err == nil {
+			t.Fatal("OriginalURL() expected error")
+		}
+	})
+}
+
 func writeFakeCommand(t *testing.T, name string, body string) {
 	t.Helper()
 
