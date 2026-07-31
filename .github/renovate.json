@@ -6,13 +6,18 @@
   "requireConfig": "ignored",
   "platform": "github",
   "repositories": ["spotdemo4/discord-embedder"],
+  "allowedCommands": ["^go mod tidy$", "^go mod vendor$", "^fix-hash \\.#default$"],
 
   // repository
   "extends": ["config:recommended"],
   "lockFileMaintenance": {
     "enabled": true,
     "automerge": true,
-    "schedule": ["* * * * 0"] // sunday
+    "schedule": ["* * * * 0"], // sunday
+    "postUpgradeTasks": {
+      "commands": ["fix-hash .#default"],
+      "executionMode": "branch"
+    }
   },
   "nix": {
     "enabled": true
@@ -29,6 +34,13 @@
     {
       "matchManagers": ["github-actions"],
       "groupName": "github actions"
+    },
+    {
+      "matchManagers": ["gomod"],
+      "postUpgradeTasks": {
+        "commands": ["go mod tidy", "go mod vendor", "fix-hash .#default"],
+        "executionMode": "branch"
+      }
     },
     {
       "matchManagers": ["gomod"],

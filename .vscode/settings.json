@@ -1,34 +1,74 @@
 {
-  "editor.formatOnSave": true,
   "files.associations": {
     "renovate.json": "jsonc",
-    ".envrc.project": "dotenv",
-    ".envrc": "dotenv"
+    ".envrc*": "shellscript"
   },
 
-  // go
+  "editor.semanticHighlighting.enabled": true,
+
+  "explorer.fileNesting.patterns": {
+    ".envrc.project": ".envrc",
+    "flake.nix": "flake.lock,treefmt.toml",
+    "README.md": "*.md,LICENSE"
+  },
+
+  "json.schemaDownload.trustedDomains": {
+    "https://raw.githubusercontent.com/": true,
+    "https://docs.renovatebot.com/": true,
+    "https://opencode.ai/": true,
+    "https://models.dev/": true
+  },
+
+  // golang.go
+  "go.alternateTools": {
+    "gopls": "gopls"
+  },
+  "go.buildTags": "dev",
   "gopls": { "ui.semanticTokens": true },
   "[go]": {
     "editor.defaultFormatter": "golang.go"
   },
 
-  // nix
+  // esbenp.prettier-vscode
+  "prettier.enable": false,
+
+  // oxc.oxc-vscode
+  "oxc.enable.oxfmt": true,
+  "editor.formatOnSave": true,
+  "editor.formatOnSaveMode": "file",
+  "[json]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  },
+  "[yaml]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  },
+  "[toml]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  },
+  "[markdown]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  },
+
+  // redhat.vscode-yaml
+  "yaml.format.enable": false,
+
+  // jnoortheen.nix-ide
   "nix.enableLanguageServer": true,
   "nix.serverPath": "nixd",
+  "nix.serverSettings": {
+    "nixd": {
+      "nixpkgs": {
+        "expr": "(builtins.getFlake (builtins.toString ./.)).outputs.nixpkgs.${builtins.currentSystem}"
+      },
+      "formatting": {
+        "command": ["nixfmt"]
+      }
+    }
+  },
   "[nix]": {
     "editor.defaultFormatter": "jnoortheen.nix-ide"
-  },
-
-  // toml
-  "[toml]": {
-    "editor.defaultFormatter": "tombi-toml.tombi"
-  },
-
-  // actions
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
-
-  // json
-  "json.schemaDownload.trustedDomains": {
-    "https://docs.renovatebot.com/": true
   }
 }
