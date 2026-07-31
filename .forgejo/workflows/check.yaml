@@ -1,0 +1,28 @@
+name: check
+
+on:
+  pull_request:
+    branches: ["main"]
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref }}
+
+# yaml-language-server-disable is not allowed
+enable-openid-connect: true
+
+jobs:
+  check:
+    # zizmor: ignore[excessive-permissions]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Initialize
+        uses: spotdemo4/nix-init@3215144ef6367f915ece1867ff66e63ad92bd9f4 # v1.62.1
+        with:
+          github_token: ${{ secrets.GH_TOKEN }}
+          niks3_url: https://niks3.trev.zip
+
+      - name: Check
+        run: nix flake check

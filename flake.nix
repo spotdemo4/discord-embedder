@@ -158,7 +158,7 @@
                 license = licenses.mit;
                 platforms = platforms.unix;
                 badPlatforms = [ systems.inspect.platformPatterns.isStatic ];
-                homepage = "https://github.com/spotdemo4/discord-embedder";
+                homepage = "https://trev.zip/llc/discord-embedder";
                 changelog = "https://github.com/spotdemo4/discord-embedder/releases/tag/v${final.version}";
               };
             }
@@ -220,9 +220,22 @@
             '';
           };
 
-          renovate-gh = {
-            root = ./.github;
-            files = ./.github/renovate.json;
+          actions-fj = {
+            root = ./.forgejo/workflows;
+            filter = file: file.hasExt "yaml";
+            packages = with pkgs; [
+              forgejo-runner
+              zizmor
+            ];
+            script = ''
+              forgejo-runner validate --workflow --path "$file"
+              zizmor --offline "$file"
+            '';
+          };
+
+          renovate-fj = {
+            root = ./.forgejo;
+            files = ./.forgejo/renovate.json;
             packages = with pkgs; [
               renovate
             ];
