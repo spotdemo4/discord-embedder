@@ -24,7 +24,7 @@ Container images are published to [GitHub Container Registry](https://github.com
 services:
   discord-embedder:
     container_name: discord-embedder
-    image: ghcr.io/spotdemo4/discord-embedder:0.3.0
+    image: ghcr.io/spotdemo4/discord-embedder:0.4.0
     environment:
       - DISCORD_TOKEN=...
       - DISCORD_APPLICATION_ID=...
