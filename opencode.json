@@ -1,0 +1,23 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "lsp": {
+    "gopls": {
+      "command": ["gopls"],
+      "extensions": [".go"]
+    },
+    "json-ls": {
+      "command": ["vscode-json-languageserver", "--stdio"],
+      "extensions": [".json", ".jsonc"]
+    },
+    "yaml-ls": {
+      "command": ["yaml-language-server", "--stdio"]
+    },
+    "tombi": {
+      "command": ["tombi", "lsp"],
+      "extensions": [".toml"]
+    },
+    "nixd": {
+      "command": ["nixd"]
+    }
+  }
+}
