@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Initialize
-        uses: spotdemo4/nix-init@52b7e46ef1fb211e25e0f91e0ba9fdf2cb1c34e2 # v1.64.0
+        uses: spotdemo4/nix-init@c7537bc73ce11ca01e53bd9d119d6e46363f9888 # v1.65.0
         with:
           github_token: ${{ secrets.GH_TOKEN }}
           niks3_url: https://niks3.trev.zip
