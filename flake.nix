@@ -70,6 +70,7 @@
           bump = pkgs.mkShell {
             packages = with pkgs; [
               bumper
+              jq
             ];
           };
 
@@ -241,6 +242,16 @@
             ];
             script = ''
               renovate-config-validator renovate.json
+            '';
+          };
+
+          scripts = {
+            root = ./scripts;
+            packages = with pkgs; [
+              shellcheck
+            ];
+            script = ''
+              shellcheck "$file"
             '';
           };
 

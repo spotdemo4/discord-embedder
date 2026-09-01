@@ -35,7 +35,26 @@ jobs:
           shell: bump
 
       - name: Bump
-        run: bumper
+        run: |
+          set -euo pipefail
+
+          force="${MANUAL_FORCE:-false}"
+          force_bump_type=patch
+          impact="$(scripts/runtime-dependency-impact.sh)"
+
+          case "$impact" in
+            minor)
+              force=true
+              force_bump_type=minor
+              ;;
+            none) ;;
+            *)
+              printf 'invalid runtime dependency impact: %q\n' "$impact" >&2
+              exit 1
+              ;;
+          esac
+
+          FORCE="$force" FORCE_BUMP_TYPE="$force_bump_type" bumper
         env:
           GITHUB_TOKEN: ${{ secrets.DOCTOR_TOKEN }}
-          FORCE: ${{ inputs.force }}
+          MANUAL_FORCE: ${{ inputs.force }}
