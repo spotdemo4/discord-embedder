@@ -105,7 +105,7 @@
           default = pkgs.buildGoModule (
             final: with pkgs.lib; {
               pname = "discord-embedder";
-              version = "0.5.0";
+              version = "0.6.0";
               ldflags = [ "-X discord-embedder/internal/version.Application=${final.version}" ];
 
               src = fileset.toSource {
