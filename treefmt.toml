@@ -1,7 +1,5 @@
 #:schema https://www.schemastore.org/treefmt.json
 
-excludes = ["vendor/**"]
-
 [formatter.gofmt]
 command = "gofmt"
 includes = ["*.go"]

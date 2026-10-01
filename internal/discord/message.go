@@ -2,12 +2,13 @@ package discord
 
 import (
 	"context"
-	"discord-embedder/internal/config"
-	"discord-embedder/internal/logger"
-	"discord-embedder/internal/video"
 	"fmt"
 	"net/url"
 	"slices"
+
+	"trev.zip/llc/discord-embedder/internal/config"
+	"trev.zip/llc/discord-embedder/internal/logger"
+	"trev.zip/llc/discord-embedder/internal/video"
 
 	"github.com/bwmarrin/discordgo"
 	slogctx "github.com/veqryn/slog-context"

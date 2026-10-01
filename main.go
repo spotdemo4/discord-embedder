@@ -2,16 +2,17 @@ package main
 
 import (
 	"context"
-	"discord-embedder/internal/config"
-	"discord-embedder/internal/discord"
-	"discord-embedder/internal/logger"
-	"discord-embedder/internal/web"
 	"embed"
 	"os"
 	"os/exec"
 	"os/signal"
 	"sync"
 	"syscall"
+
+	"trev.zip/llc/discord-embedder/internal/config"
+	"trev.zip/llc/discord-embedder/internal/discord"
+	"trev.zip/llc/discord-embedder/internal/logger"
+	"trev.zip/llc/discord-embedder/internal/web"
 )
 
 //go:embed templates/home.html

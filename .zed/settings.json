@@ -30,79 +30,37 @@
     "Go": {
       "format_on_save": "on",
       "language_servers": ["gopls"],
-      "formatter": [
-        {
-          "language_server": {
-            "name": "gopls"
-          }
-        }
-      ]
+      "formatter": [{ "language_server": { "name": "gopls" } }]
     },
     "JSON": {
       "format_on_save": "on",
       "language_servers": ["json-language-server", "oxfmt"],
-      "formatter": [
-        {
-          "language_server": {
-            "name": "oxfmt"
-          }
-        }
-      ]
+      "formatter": [{ "language_server": { "name": "oxfmt" } }]
     },
     "JSONC": {
       "format_on_save": "on",
       "language_servers": ["json-language-server", "oxfmt"],
-      "formatter": [
-        {
-          "language_server": {
-            "name": "oxfmt"
-          }
-        }
-      ]
+      "formatter": [{ "language_server": { "name": "oxfmt" } }]
     },
     "Markdown": {
       "format_on_save": "on",
       "language_servers": ["oxfmt"],
-      "formatter": [
-        {
-          "language_server": {
-            "name": "oxfmt"
-          }
-        }
-      ]
+      "formatter": [{ "language_server": { "name": "oxfmt" } }]
     },
     "YAML": {
       "format_on_save": "on",
       "language_servers": ["yaml-language-server", "oxfmt"],
-      "formatter": [
-        {
-          "language_server": {
-            "name": "oxfmt"
-          }
-        }
-      ]
+      "formatter": [{ "language_server": { "name": "oxfmt" } }]
     },
     "TOML": {
       "format_on_save": "on",
       "language_servers": ["tombi", "oxfmt"],
-      "formatter": [
-        {
-          "language_server": {
-            "name": "oxfmt"
-          }
-        }
-      ]
+      "formatter": [{ "language_server": { "name": "oxfmt" } }]
     },
     "Nix": {
       "format_on_save": "on",
       "language_servers": ["nixd"],
-      "formatter": [
-        {
-          "language_server": {
-            "name": "nixd"
-          }
-        }
-      ]
+      "formatter": [{ "language_server": { "name": "nixd" } }]
     }
   }
 }

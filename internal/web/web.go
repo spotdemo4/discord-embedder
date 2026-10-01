@@ -2,13 +2,14 @@ package web
 
 import (
 	"context"
-	"discord-embedder/internal/config"
-	"discord-embedder/internal/logger"
 	"embed"
 	"errors"
 	"fmt"
 	"net/http"
 	"time"
+
+	"trev.zip/llc/discord-embedder/internal/config"
+	"trev.zip/llc/discord-embedder/internal/logger"
 )
 
 const timeout = 5 * time.Second

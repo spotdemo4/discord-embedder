@@ -2,12 +2,13 @@ package video
 
 import (
 	"context"
-	"discord-embedder/internal/config"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"trev.zip/llc/discord-embedder/internal/config"
 )
 
 type File struct {

@@ -2,10 +2,11 @@ package main
 
 import (
 	"bytes"
-	"discord-embedder/internal/web"
 	"html/template"
 	"strings"
 	"testing"
+
+	"trev.zip/llc/discord-embedder/internal/web"
 )
 
 func TestHomeTemplateSourceURL(t *testing.T) {

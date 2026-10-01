@@ -7,7 +7,7 @@
   "platform": "forgejo",
   "endpoint": "https://trev.zip/api/v1",
   "repositories": ["llc/discord-embedder"],
-  "allowedCommands": ["^go mod tidy$", "^go mod vendor$", "^fix-hash \\.#default$"],
+  "allowedCommands": ["^fix-hash \\.#default$"],
 
   // repository
   "extends": ["config:recommended"],
@@ -32,25 +32,23 @@
     },
     {
       "matchManagers": ["nix"],
-      "groupName": "nix inputs",
       "addLabels": ["nix"]
     },
     {
       "matchManagers": ["github-actions"],
-      "groupName": "github actions",
       "addLabels": ["actions"]
     },
     {
       "matchManagers": ["gomod"],
       "addLabels": ["go"],
       "postUpgradeTasks": {
-        "commands": ["go mod tidy", "go mod vendor", "fix-hash .#default"],
+        "commands": ["fix-hash .#default"],
         "executionMode": "branch"
       }
     },
     {
       "matchManagers": ["gomod"],
-      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "matchUpdateTypes": ["minor", "patch", "digest"],
       "groupName": "go modules"
     }
   ]

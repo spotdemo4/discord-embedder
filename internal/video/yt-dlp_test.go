@@ -2,7 +2,6 @@ package video
 
 import (
 	"context"
-	"discord-embedder/internal/config"
 	"fmt"
 	"net/url"
 	"os"
@@ -10,6 +9,8 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"trev.zip/llc/discord-embedder/internal/config"
 )
 
 func TestYTDLPArgs(t *testing.T) {

@@ -2,14 +2,15 @@ package web
 
 import (
 	"context"
-	"discord-embedder/internal/config"
-	"discord-embedder/internal/logger"
-	"discord-embedder/internal/video"
 	"embed"
 	"fmt"
 	"html/template"
 	"net/http"
 	"strings"
+
+	"trev.zip/llc/discord-embedder/internal/config"
+	"trev.zip/llc/discord-embedder/internal/logger"
+	"trev.zip/llc/discord-embedder/internal/video"
 )
 
 type Page struct {

@@ -2,10 +2,11 @@ package video
 
 import (
 	"context"
-	"discord-embedder/internal/config"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"trev.zip/llc/discord-embedder/internal/config"
 )
 
 func TestGet(t *testing.T) {

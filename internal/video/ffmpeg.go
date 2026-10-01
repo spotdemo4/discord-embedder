@@ -2,8 +2,6 @@ package video
 
 import (
 	"context"
-	"discord-embedder/internal/config"
-	"discord-embedder/internal/logger"
 	"errors"
 	"fmt"
 	"io"
@@ -11,6 +9,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+
+	"trev.zip/llc/discord-embedder/internal/config"
+	"trev.zip/llc/discord-embedder/internal/logger"
 )
 
 // Compress compresses the video to reduce file size, adjusts its playback speed, and converts it to h264 mp4.

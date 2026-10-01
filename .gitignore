@@ -3,9 +3,9 @@
 /docker-compose*
 
 # agents
-/.agents/
-/.claude/
-/.codex/
+.agents/
+.claude/
+.codex/
 
 # nix
 /result*

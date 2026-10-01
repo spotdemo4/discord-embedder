@@ -7,6 +7,7 @@ on:
 
 concurrency:
   group: release
+  cancel-in-progress: false
 
 # yaml-language-server-disable is not allowed
 enable-openid-connect: true
@@ -29,7 +30,8 @@ jobs:
         run: flake-release
         env:
           GITHUB_TOKEN: ${{ secrets.DOCTOR_TOKEN }}
-          REGISTRY: trev.zip
-          REGISTRY_PASSWORD: ${{ secrets.PACKAGE_TOKEN }}
-          DELETE_OLD_RELEASE_ARTIFACTS: true
-          PACKAGES: images.x86_64-linux.default
+          PACKAGE_REGISTRY_TOKEN: ${{ secrets.PACKAGE_TOKEN }}
+          CONTAINER_REGISTRY_PASSWORD: ${{ secrets.PACKAGE_TOKEN }}
+          DELETE_OLD_RELEASE_ARTIFACTS: 2
+          PACKAGES: |
+            images.x86_64-linux.default.x86_64-unknown-linux-gnu

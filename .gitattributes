@@ -1,0 +1,26 @@
+# Git attributes
+# https://git-scm.com/docs/gitattributes
+
+# Linguist: Go lock files are generated
+flake.lock linguist-generated=true
+go.sum linguist-generated=true
+
+# Go source files use Go diff driver
+*.go diff=go linguist-language=Go
+go.mod text linguist-language=Go
+
+# Normalize line endings to LF and auto-detect text files
+* text=auto eol=lf
+
+# Shell scripts must use LF
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Windows batch files require CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Do not normalize patch/diff files
+*.diff -text
+*.patch -text
