@@ -1,4 +1,4 @@
-module discord-embedder
+module trev.zip/llc/discord-embedder
 
 go 1.26.1
 

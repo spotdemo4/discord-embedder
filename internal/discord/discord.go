@@ -2,18 +2,19 @@ package discord
 
 import (
 	"context"
-	"discord-embedder/internal/config"
-	"discord-embedder/internal/logger"
 	"errors"
 	"os/exec"
+
+	"trev.zip/llc/discord-embedder/internal/config"
+	"trev.zip/llc/discord-embedder/internal/logger"
 
 	"github.com/bwmarrin/discordgo"
 )
 
 const (
-	embedSpeedNormal = "x1"
+	embedSpeedNormal     = "x1"
 	embedSpeedOneAndHalf = "x1.5"
-	embedSpeedDouble = "x2"
+	embedSpeedDouble     = "x2"
 )
 
 func New(ctx context.Context) error {

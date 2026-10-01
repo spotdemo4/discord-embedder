@@ -16,6 +16,7 @@ on:
 
 concurrency:
   group: release
+  cancel-in-progress: false
 
 # yaml-language-server-disable is not allowed
 enable-openid-connect: true

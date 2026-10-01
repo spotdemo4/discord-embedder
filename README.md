@@ -2,29 +2,28 @@
 
 [![check](https://trev.zip/llc/discord-embedder/actions/workflows/check.yaml/badge.svg?branch=main&logo=forgejo&logoColor=%23bac2de&label=check&labelColor=%23313244)](https://trev.zip/llc/discord-embedder/actions?workflow=check.yaml)
 [![vulnerable](https://trev.zip/llc/discord-embedder/actions/workflows/vulnerable.yaml/badge.svg?branch=main&logo=forgejo&logoColor=%23bac2de&label=vulnerable&labelColor=%23313244)](https://trev.zip/llc/discord-embedder/actions?workflow=vulnerable.yaml)
-[![nix](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Ftrev.zip%2Fllc%2Fdiscord-embedder%2Fraw%2Fbranch%2Fmain%2Fflake.lock&query=%24.nodes.nixpkgs.original.ref&logo=nixos&logoColor=%23bac2de&label=channel&labelColor=%23313244&color=%234d6fb7)](https://nixos.org/)
+[![nixpkgs](https://nix-shield.trev.zip/?url=https://trev.zip/llc/discord-embedder/raw/branch/main/flake.lock&input=nixpkgs&logoColor=%23bac2de&labelColor=%23313244&color=%235277C3)](https://nixos.org/)
 [![go](<https://img.shields.io/badge/dynamic/regex?url=https://trev.zip/llc/discord-embedder/raw/branch/main/go.mod&search=toolchain%20go(.*)&replace=%241&logo=go&logoColor=%23bac2de&label=version&labelColor=%23313244&color=%2300ADD8>)](https://go.dev/doc/devel/release)
-[![flakehub](https://img.shields.io/endpoint?url=https://flakehub.com/f/spotdemo4/discord-embedder/badge&labelColor=%23313244)](https://flakehub.com/flake/spotdemo4/discord-embedder)
 
 A Discord bot / web server that downloads and generates video embeds.
 
-## Requirements
+## requirements
 
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp)
 - [FFmpeg](https://ffmpeg.org/)
 
-## Installation
+the docker image and nix package include both
 
-Container images are published to [GitHub Container Registry](https://github.com/spotdemo4/discord-embedder/pkgs/container/discord-embedder), and the repository exposes a Nix package.
+## using
 
-### Docker
+### docker
 
 ```yaml
 # docker-compose.yaml
 services:
   discord-embedder:
     container_name: discord-embedder
-    image: ghcr.io/spotdemo4/discord-embedder:0.6.0
+    image: trev.zip/llc/discord-embedder:latest
     environment:
       - DISCORD_TOKEN=...
       - DISCORD_APPLICATION_ID=...
@@ -37,30 +36,20 @@ services:
     restart: unless-stopped
 ```
 
-### Nix
+### nix
 
-Add the repository to your flake inputs:
-
-```nix
-inputs = {
-  # ...
-  discord-embedder = {
-    url = "github:spotdemo4/discord-embedder";
-    inputs.nixpkgs.follows = "nixpkgs";
-  };
-};
+```sh
+nix run git+https://trev.zip/llc/discord-embedder.git
 ```
 
-Then add discord-embedder to your packages:
+### go
 
-```nix
-environment.systemPackages = with pkgs; [
-  # ...
-  discord-embedder.packages."${system}".default
-];
+```sh
+GOPROXY=https://trev.zip/api/packages/llc/go \
+    go install trev.zip/llc/discord-embedder@latest
 ```
 
-## Configuration
+## configuration
 
 All configuration is done through environment variables or a `.env` file.
 
@@ -92,6 +81,10 @@ X_USERNAME=...
 X_PASSWORD=...
 ```
 
-## Usage/Examples
+## example
 
 ![example image](https://i.imgur.com/53gDpwW.png)
+
+## contributing
+
+see [CONTRIBUTING.md](CONTRIBUTING.md) for requirements and getting started

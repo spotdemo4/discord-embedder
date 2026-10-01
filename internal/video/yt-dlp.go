@@ -2,8 +2,6 @@ package video
 
 import (
 	"context"
-	"discord-embedder/internal/config"
-	"discord-embedder/internal/logger"
 	"errors"
 	"fmt"
 	"net/url"
@@ -11,6 +9,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"trev.zip/llc/discord-embedder/internal/config"
+	"trev.zip/llc/discord-embedder/internal/logger"
 
 	"github.com/google/uuid"
 )

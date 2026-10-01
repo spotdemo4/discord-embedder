@@ -2,10 +2,11 @@ package config
 
 import (
 	"context"
-	"discord-embedder/internal/logger"
 	"log/slog"
 	"os"
 	"path/filepath"
+
+	"trev.zip/llc/discord-embedder/internal/logger"
 
 	"github.com/caarlos0/env/v11"
 	"github.com/joho/godotenv"

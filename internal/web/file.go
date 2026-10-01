@@ -1,12 +1,13 @@
 package web
 
 import (
-	"discord-embedder/internal/config"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"trev.zip/llc/discord-embedder/internal/config"
 )
 
 func fileHandler(cfg *config.Config) func(http.ResponseWriter, *http.Request) {

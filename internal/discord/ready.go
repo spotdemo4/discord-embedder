@@ -2,8 +2,9 @@ package discord
 
 import (
 	"context"
-	"discord-embedder/internal/config"
-	"discord-embedder/internal/logger"
+
+	"trev.zip/llc/discord-embedder/internal/config"
+	"trev.zip/llc/discord-embedder/internal/logger"
 
 	"github.com/bwmarrin/discordgo"
 )

@@ -57,7 +57,6 @@
 
               # nix
               nixd
-              nil
               nixfmt
 
               # util
@@ -83,17 +82,15 @@
           update = pkgs.mkShell {
             packages = with pkgs; [
               renovate
-              go # go mod tidy && go mod vendor
-              fix-hash
+              go # go mod tidy
+              fix-hash # vendorHash
             ];
           };
 
           vulnerable = pkgs.mkShell {
             packages = with pkgs; [
-              # go
               go
-              govulncheck
-
+              govulncheck # go
               flake-checker # nix
               zizmor # actions
             ];
@@ -102,39 +99,36 @@
 
         # nix build [#...]
         packages = {
-          default = pkgs.buildGoModule (
+          default = pkgs.mkGoModule (
             final: with pkgs.lib; {
               pname = "discord-embedder";
               version = "0.6.0";
-              ldflags = [ "-X discord-embedder/internal/version.Application=${final.version}" ];
+              ldflags = [ "-X trev.zip/llc/discord-embedder/internal/version.Application=${final.version}" ];
 
               src = fileset.toSource {
                 root = ./.;
                 fileset = fileset.unions [
                   ./go.mod
                   ./go.sum
-                  ./main.go
-                  ./internal
+                  (fileset.fileFilter (file: file.hasExt "go") ./.)
                   ./templates
-                  ./vendor
                 ];
               };
               goSum = ./go.sum;
-              vendorHash = null;
+              vendorHash = "sha256-M1fuxa2A0yZflndPar4VBaj3DO1XLSVVu4b6jxFwnM8=";
 
               nativeBuildInputs = with pkgs; [
                 makeWrapper
               ];
-              nativeCheckInputs = with pkgs; [
-                go-tools
-              ];
+
+              doCheck = true;
               checkPhase = ''
+                runHook preCheck
                 export HOME=$(mktemp -d)
                 go test ./...
-                go vet ./...
-                staticcheck ./...
-                go fix -diff ./...
+                runHook postCheck
               '';
+
               postFixup = ''
                 wrapProgram $out/bin/discord-embedder \
                   --prefix PATH : ${
@@ -160,7 +154,8 @@
                 platforms = platforms.unix;
                 badPlatforms = [ systems.inspect.platformPatterns.isStatic ];
                 homepage = "https://trev.zip/llc/discord-embedder";
-                changelog = "https://github.com/spotdemo4/discord-embedder/releases/tag/v${final.version}";
+                changelog = "https://trev.zip/llc/discord-embedder/releases";
+                downloadPage = "https://trev.zip/llc/discord-embedder/releases/tag/v${final.version}";
               };
             }
           );
@@ -188,18 +183,21 @@
 
         # nix flake check
         checks = pkgs.mkChecks {
-          go = self.packages.${system}.default.overrideAttrs {
-            dontBuild = true;
-            installPhase = ''
-              touch $out
+          inherit (self.packages.${system}) default;
+
+          go = {
+            src = self.packages.${system}.default;
+            packages = with pkgs; [ go-tools ];
+            script = ''
+              go vet ./...
+              staticcheck ./...
+              go fix -diff ./...
             '';
-            postFixup = "";
           };
 
           nix = {
             root = ./.;
             filter = file: file.hasExt "nix";
-            ignore = ./vendor;
             packages = with pkgs; [
               nixfmt
             ];
@@ -258,7 +256,6 @@
           config = {
             root = ./.;
             filter = file: file.hasExt "json" || file.hasExt "yaml" || file.hasExt "toml" || file.hasExt "md";
-            ignore = ./vendor;
             packages = with pkgs; [
               oxfmt
             ];

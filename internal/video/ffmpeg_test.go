@@ -2,12 +2,13 @@ package video
 
 import (
 	"context"
-	"discord-embedder/internal/config"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+
+	"trev.zip/llc/discord-embedder/internal/config"
 )
 
 func TestCompressionArgs(t *testing.T) {
@@ -758,7 +759,7 @@ func TestTrimArgs(t *testing.T) {
 		"-sn",
 		"-dn",
 		"-map_metadata", "-1",
-				"-map_chapters", "-1",
+		"-map_chapters", "-1",
 		"-hide_banner",
 		"-loglevel", "error",
 		"/tmp/output.mkv",
