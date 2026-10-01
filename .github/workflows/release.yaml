@@ -31,4 +31,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PACKAGES: |
+            packages.x86_64-linux.default.x86_64-unknown-linux-gnu
             images.x86_64-linux.default.x86_64-unknown-linux-gnu
