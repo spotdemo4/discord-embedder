@@ -8,7 +8,6 @@ import (
 
 	"trev.zip/llc/discord-embedder/internal/config"
 	"trev.zip/llc/discord-embedder/internal/logger"
-	"trev.zip/llc/discord-embedder/internal/video"
 
 	"github.com/bwmarrin/discordgo"
 	slogctx "github.com/veqryn/slog-context"
@@ -82,7 +81,7 @@ func handleMessage(
 	ctx = slogctx.Append(ctx, "url", i.Message.Content)
 
 	// Download video
-	v, err := video.Download(ctx, i.Message.Content)
+	v, err := download(ctx, i.Author.ID, i.Message.Content)
 	if err != nil {
 		log.ErrorContext(ctx, "could not get video", "error", err)
 		return nil, err

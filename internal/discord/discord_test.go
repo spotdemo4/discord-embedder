@@ -1,7 +1,12 @@
 package discord
 
 import (
+	"errors"
+	"fmt"
+	"strings"
 	"testing"
+
+	"trev.zip/llc/discord-embedder/internal/video"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -77,6 +82,75 @@ func TestEmbedSpeedFactor(t *testing.T) {
 			}
 			if got != tt.want {
 				t.Errorf("embedSpeedFactor() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestApplicationCommandsCookies(t *testing.T) {
+	var cookiesCommand *discordgo.ApplicationCommand
+	for _, command := range applicationCommands() {
+		switch command.Name {
+		case "cookies":
+			cookiesCommand = command
+		case "embed":
+			for _, option := range command.Options {
+				if option.Type == discordgo.ApplicationCommandOptionAttachment {
+					t.Errorf("embed option %q is an attachment, cookies belong in /cookies", option.Name)
+				}
+			}
+		}
+	}
+	if cookiesCommand == nil {
+		t.Fatal("cookies command not found")
+	}
+
+	want := map[string]discordgo.ApplicationCommandOptionType{
+		"file": discordgo.ApplicationCommandOptionAttachment,
+	}
+	if len(cookiesCommand.Options) != len(want) {
+		t.Fatalf("cookies options = %d, want %d", len(cookiesCommand.Options), len(want))
+	}
+	for _, option := range cookiesCommand.Options {
+		wantType, ok := want[option.Name]
+		if !ok {
+			t.Errorf("unexpected cookies option %q", option.Name)
+			continue
+		}
+		if option.Type != wantType {
+			t.Errorf("cookies option %q type = %v, want %v", option.Name, option.Type, wantType)
+		}
+		if !option.Required {
+			t.Errorf("cookies option %q is optional, want required", option.Name)
+		}
+	}
+}
+
+func TestErrMsgLoginRequired(t *testing.T) {
+	cause := fmt.Errorf("yt-dlp failed: %w", video.ErrLoginRequired)
+
+	tests := []struct {
+		name        string
+		usedCookies bool
+		want        string
+	}{
+		{name: "without cookies", want: "tiktok.com requires a login"},
+		{name: "with saved cookies", usedCookies: true, want: "saved cookies for tiktok.com did not work"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := fmt.Errorf("download: %w", &loginRequiredError{err: cause, site: "tiktok.com", usedCookies: tt.usedCookies})
+
+			got := errMsg(err)
+			if !strings.Contains(got, tt.want) {
+				t.Errorf("errMsg() = %q, want it to contain %q", got, tt.want)
+			}
+			if !strings.Contains(got, "`/cookies`") {
+				t.Errorf("errMsg() = %q, want it to mention the cookies command", got)
+			}
+			if !errors.Is(err, video.ErrLoginRequired) {
+				t.Error("loginRequiredError does not unwrap to video.ErrLoginRequired")
 			}
 		})
 	}

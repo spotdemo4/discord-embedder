@@ -2,12 +2,14 @@ package video
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"trev.zip/llc/discord-embedder/internal/config"
@@ -19,10 +21,9 @@ func TestYTDLPArgs(t *testing.T) {
 	downloadURL := "https://example.com/watch?v=1"
 
 	tests := []struct {
-		name     string
-		username string
-		password string
-		want     []string
+		name string
+		auth auth
+		want []string
 	}{
 		{
 			name: "without credentials",
@@ -37,9 +38,8 @@ func TestYTDLPArgs(t *testing.T) {
 			},
 		},
 		{
-			name:     "with credentials",
-			username: "user",
-			password: "pass",
+			name: "with credentials",
+			auth: auth{username: "user", password: "pass"},
 			want: []string{
 				"--ignore-config",
 				"--no-playlist",
@@ -52,11 +52,25 @@ func TestYTDLPArgs(t *testing.T) {
 				downloadURL,
 			},
 		},
+		{
+			name: "with cookies",
+			auth: auth{cookies: "/tmp/cookies.txt"},
+			want: []string{
+				"--ignore-config",
+				"--no-playlist",
+				"--no-simulate",
+				"--format", "bv[vcodec~='^(h264|avc)']+ba/b[vcodec~='^(h264|avc)']/bv+ba/b",
+				"--output", filepath.Join(filesDir, id) + ".%(ext)s",
+				"--print", "after_move:filepath",
+				"--cookies", "/tmp/cookies.txt",
+				downloadURL,
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ytdlpArgs(filesDir, id, downloadURL, tt.username, tt.password)
+			got := ytdlpArgs(filesDir, id, downloadURL, tt.auth)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ytdlpArgs() = %q, want %q", got, tt.want)
 			}
@@ -87,7 +101,7 @@ printf '%s\n' "$FAKE_FILES_DIR/$FAKE_ID.webm"
 		t.Fatal(err)
 	}
 	ctx := config.WithConfig(context.Background(), &config.Config{FilesDir: filesDir})
-	if _, err = ytdlp(ctx, link, downloadURL, id); err != nil {
+	if _, err = ytdlp(ctx, link, downloadURL, id, nil); err != nil {
 		t.Fatalf("ytdlp() error = %v", err)
 	}
 
@@ -234,7 +248,7 @@ printf '%s\n' "$FAKE_FILES_DIR/$FAKE_ID.webm"
 		t.Fatal(err)
 	}
 
-	got, err := ytdlp(ctx, link, link.String(), id)
+	got, err := ytdlp(ctx, link, link.String(), id, nil)
 	if err != nil {
 		t.Fatalf("ytdlp() error = %v", err)
 	}
@@ -263,11 +277,136 @@ exit 1
 		t.Fatal(err)
 	}
 
-	if _, err = ytdlp(ctx, link, link.String(), id); err == nil {
+	if _, err = ytdlp(ctx, link, link.String(), id, nil); err == nil {
 		t.Fatal("ytdlp() expected error")
 	}
 	if _, err = os.Stat(filepath.Join(filesDir, id+".webm.part")); !os.IsNotExist(err) {
 		t.Errorf("failed download artifact still exists, error = %v", err)
+	}
+}
+
+func TestYTDLPTriesCookiesFirst(t *testing.T) {
+	filesDir := t.TempDir()
+	tempDir := t.TempDir()
+	argsPath := filepath.Join(t.TempDir(), "args")
+	cookiesCopy := filepath.Join(t.TempDir(), "cookies.txt")
+	id := "video-id"
+	writeFakeYTDLP(t, `
+printf '%s\n' "$*" >> "$FAKE_ARGS_PATH"
+case " $* " in
+  *" --cookies "*)
+    cookies="$(printf '%s\n' "$@" | grep -A1 -x -- --cookies | tail -n1)"
+    cp "$cookies" "$FAKE_COOKIES_COPY"
+    printf video > "$FAKE_FILES_DIR/$FAKE_ID.webm"
+    printf '%s\n' "$FAKE_FILES_DIR/$FAKE_ID.webm"
+    exit 0
+    ;;
+esac
+exit 1
+`)
+	t.Setenv("FAKE_ARGS_PATH", argsPath)
+	t.Setenv("FAKE_COOKIES_COPY", cookiesCopy)
+	t.Setenv("FAKE_FILES_DIR", filesDir)
+	t.Setenv("FAKE_ID", id)
+
+	ctx := config.WithConfig(context.Background(), &config.Config{
+		FilesDir:       filesDir,
+		TempDir:        tempDir,
+		TikTokUsername: "user",
+		TikTokPassword: "pass",
+	})
+	link, err := url.Parse("https://www.tiktok.com/@user/video/1")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cookies := []byte("# Netscape HTTP Cookie File\n.tiktok.com\tTRUE\t/\tTRUE\t0\tsessionid\tsecret\n")
+	if _, err = ytdlp(ctx, link, link.String(), id, cookies); err != nil {
+		t.Fatalf("ytdlp() error = %v", err)
+	}
+
+	args, err := os.ReadFile(argsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if lines := strings.Count(string(args), "\n"); lines != 1 {
+		t.Errorf("yt-dlp ran %d times, want 1", lines)
+	}
+
+	got, err := os.ReadFile(cookiesCopy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != string(cookies) {
+		t.Errorf("yt-dlp cookies = %q, want %q", got, cookies)
+	}
+	entries, err := os.ReadDir(tempDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Errorf("temp dir has %d entries, want cookies file removed", len(entries))
+	}
+}
+
+func TestYTDLPLoginRequired(t *testing.T) {
+	filesDir := t.TempDir()
+	id := "video-id"
+	writeFakeYTDLP(t, `
+printf '%s\n' "ERROR: [TikTok] 1: This post may not be comfortable for some audiences. Log in for access. Use --cookies-from-browser or --cookies for the authentication." >&2
+exit 1
+`)
+
+	ctx := config.WithConfig(context.Background(), &config.Config{FilesDir: filesDir})
+	link, err := url.Parse("https://www.tiktok.com/@user/video/1")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = ytdlp(ctx, link, link.String(), id, nil)
+	if !errors.Is(err, ErrLoginRequired) {
+		t.Errorf("ytdlp() error = %v, want ErrLoginRequired", err)
+	}
+	var exitErr *exec.ExitError
+	if !errors.As(err, &exitErr) {
+		t.Errorf("ytdlp() error = %v, want exec.ExitError", err)
+	}
+}
+
+func TestLoginRequired(t *testing.T) {
+	tests := []struct {
+		name   string
+		stderr string
+		want   bool
+	}{
+		{
+			name:   "tiktok",
+			stderr: "ERROR: [TikTok] 1: This post may not be comfortable for some audiences. Log in for access. Use --cookies-from-browser or --cookies for the authentication.\n",
+			want:   true,
+		},
+		{
+			name:   "youtube bot check",
+			stderr: "WARNING: something\nERROR: [youtube] 1: Sign in to confirm you're not a bot. Use --cookies-from-browser or --cookies for the authentication.\n",
+			want:   true,
+		},
+		{
+			name:   "warning only",
+			stderr: "WARNING: Use --cookies for more formats\nERROR: Unsupported URL: https://example.com\n",
+			want:   false,
+		},
+		{
+			name:   "other error",
+			stderr: "ERROR: Unsupported URL: https://example.com\n",
+			want:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := loginRequired(tt.stderr); got != tt.want {
+				t.Errorf("loginRequired() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 

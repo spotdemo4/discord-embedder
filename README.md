@@ -29,8 +29,11 @@ services:
       - DISCORD_APPLICATION_ID=...
       - HOST=https://embed.example.com
       - FILES_DIR=/files
+      - COOKIES_DIR=/cookies
+      - COOKIES_KEY=...
     volumes:
       - ./files:/files
+      - ./cookies:/cookies
     ports:
       - 8080:8080
     restart: unless-stopped
@@ -59,6 +62,8 @@ DISCORD_APPLICATION_ID=replaceme # Discord application ID
 DISCORD_CHANNEL_IDS=000000000000,000000000000 # Comma-separated list of Discord channel IDs that automatically embed URLs
 FILES_DIR=/tmp/files # Path to store downloaded files
 TMP_DIR=/tmp/temp # Path to store temporary files
+COOKIES_DIR=/tmp/cookies # Path to store cookies provided by users (default: $XDG_CONFIG_HOME/discord-embedder/cookies)
+COOKIES_KEY=replaceme # Base64 encoded 32 byte key to encrypt saved cookies, cookies are disabled when unset (generate with: openssl rand -base64 32)
 HOST=https://embed.example.com # URL where the web server will be reachable
 PORT=8080 # Port for the web server to listen on (default: 8080)
 QUICKSYNC=false # Toggle Intel QSV for transcoding downloaded videos (default: false)
@@ -80,6 +85,18 @@ INSTAGRAM_PASSWORD=...
 X_USERNAME=...
 X_PASSWORD=...
 ```
+
+### cookies
+
+When TikTok, Reddit, Instagram, or X requires a login, the bot asks for cookies instead. Save a
+[Netscape `cookies.txt`](https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp) exported from a
+logged in browser with `/cookies file:<cookies.txt>`, which is only visible to you. Only the cookies for those sites are
+kept, in a single file per Discord user in `COOKIES_DIR`, and they are used for that user's embeds (including automatic
+channel embeds). Uploading again replaces the saved cookies for each site in the new file and keeps the rest.
+
+Saved cookies are encrypted with `COOKIES_KEY` (AES-256-GCM), and are only decrypted to a temporary file in `TMP_DIR`
+while yt-dlp runs. Cookies are disabled when `COOKIES_KEY` is unset. Changing the key makes existing saved cookies
+unreadable, so users will need to upload them again.
 
 ## example
 

@@ -2,9 +2,12 @@ package config
 
 import (
 	"context"
+	"encoding/base64"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"trev.zip/llc/discord-embedder/internal/logger"
 
@@ -18,6 +21,8 @@ type Config struct {
 	DiscordChannelIDs    []string `env:"DISCORD_CHANNEL_IDS"             envSeparator:","`
 	FilesDir             string   `env:"FILES_DIR"`
 	TempDir              string   `env:"TMP_DIR"`
+	CookiesDir           string   `env:"COOKIES_DIR"`
+	CookiesKey           Key      `env:"COOKIES_KEY"`
 	Host                 string   `env:"HOST,required"`
 	Port                 int      `env:"PORT"                                             envDefault:"8080"`
 	Quicksync            bool     `env:"QUICKSYNC"                                        envDefault:"false"`
@@ -63,6 +68,18 @@ func New(ctx context.Context) (*Config, error) {
 		cfg.FilesDir = filepath.Join(configDir, "discord-embedder", "files")
 	}
 
+	// Set default CookiesDir
+	if cfg.CookiesDir == "" {
+		var configDir string
+		configDir, err = os.UserConfigDir()
+		if err != nil {
+			log.ErrorContext(ctx, "could not get user config dir", "error", err)
+			return nil, err
+		}
+
+		cfg.CookiesDir = filepath.Join(configDir, "discord-embedder", "cookies")
+	}
+
 	// Set default TempDir
 	if cfg.TempDir == "" {
 		tempDir := os.TempDir()
@@ -95,12 +112,20 @@ func New(ctx context.Context) (*Config, error) {
 		return nil, err
 	}
 
+	// Validate CookiesDir
+	err = validatePath(ctx, cfg.CookiesDir)
+	if err != nil {
+		return nil, err
+	}
+
 	// Log config (without sensitive info)
 	log.InfoContext(ctx, "got config",
 		"discord_application_id", cfg.DiscordApplicationID,
 		"discord_channel_ids", cfg.DiscordChannelIDs,
 		"files_dir", cfg.FilesDir,
 		"temp_dir", cfg.TempDir,
+		"cookies_dir", cfg.CookiesDir,
+		"cookies_enabled", len(cfg.CookiesKey) > 0,
 		"host", cfg.Host,
 		"port", cfg.Port,
 		"quicksync", cfg.Quicksync,
@@ -123,6 +148,22 @@ func validatePath(ctx context.Context, path string) error {
 		}
 	}
 
+	return nil
+}
+
+// Key is a base64 encoded AES-256 key.
+type Key []byte
+
+func (k *Key) UnmarshalText(text []byte) error {
+	key, err := base64.StdEncoding.DecodeString(strings.TrimSpace(string(text)))
+	if err != nil {
+		return fmt.Errorf("key must be base64 encoded: %w", err)
+	}
+	if len(key) != 32 {
+		return fmt.Errorf("key must be 32 bytes, got %d", len(key))
+	}
+
+	*k = key
 	return nil
 }
 

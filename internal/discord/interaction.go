@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"trev.zip/llc/discord-embedder/internal/config"
 	"trev.zip/llc/discord-embedder/internal/logger"
 	"trev.zip/llc/discord-embedder/internal/version"
-	"trev.zip/llc/discord-embedder/internal/video"
 
 	"github.com/bwmarrin/discordgo"
 	slogctx "github.com/veqryn/slog-context"
@@ -49,6 +49,30 @@ func onInteraction(ctx context.Context) any {
 				return
 			}
 
+		case "cookies":
+			nctx := slogctx.Append(ctx, "interaction_id", i.ID)
+
+			var opts cookiesOptions
+			err := parseOptions(data.Options, &opts)
+			if err != nil {
+				log.ErrorContext(nctx, "could not parse options", "error", err)
+				return
+			}
+
+			err = handleCookies(nctx, s, i, opts)
+			if err != nil {
+				// Respond with error message, the deferred response is ephemeral so this is too
+				errMsg := errMsg(err)
+				_, err = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+					Content: &errMsg,
+				})
+				if err != nil {
+					log.ErrorContext(nctx, "could not respond to interaction", "error", err)
+				}
+
+				return
+			}
+
 		case "version":
 			nctx := slogctx.Append(ctx, "interaction_id", i.ID)
 			if err := handleVersion(nctx, s, i); err != nil {
@@ -67,6 +91,10 @@ type embed struct {
 	End     string `json:"end"`
 	Speed   string `json:"speed"`
 	Spoiler bool   `json:"spoiler"`
+}
+
+type cookiesOptions struct {
+	File string `json:"file"`
 }
 
 func embedSpeedFactor(speed string) (float64, error) {
@@ -112,7 +140,7 @@ func handleEmbed(
 	ctx = slogctx.Append(ctx, "url", opts.URL, "speed", speed)
 
 	// Download video
-	v, err := video.Download(ctx, opts.URL)
+	v, err := download(ctx, interactionUserID(i), opts.URL)
 	if err != nil {
 		log.ErrorContext(ctx, "could not download video", "error", err)
 		return err
@@ -151,6 +179,49 @@ func handleEmbed(
 	if err != nil || message == nil {
 		log.ErrorContext(ctx, "could not send video to discord", "error", err)
 		return err
+	}
+
+	return nil
+}
+
+func handleCookies(
+	ctx context.Context,
+	s *discordgo.Session,
+	i *discordgo.InteractionCreate,
+	opts cookiesOptions,
+) error {
+	log := logger.FromContext(ctx)
+
+	// Defer an ephemeral response so nobody else sees the command
+	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Flags: discordgo.MessageFlagsEphemeral,
+		},
+	}); err != nil {
+		return fmt.Errorf("defer cookies interaction: %w", err)
+	}
+
+	resolved := i.ApplicationCommandData().Resolved
+	if resolved == nil || resolved.Attachments[opts.File] == nil {
+		return errors.New("could not find cookies file")
+	}
+
+	sites, err := saveCookies(ctx, interactionUserID(i), resolved.Attachments[opts.File])
+	if err != nil {
+		log.ErrorContext(ctx, "could not save cookies", "error", err)
+		return err
+	}
+	log.InfoContext(ctx, "saved cookies", "sites", sites)
+
+	content := fmt.Sprintf(
+		"Saved your cookies for %s, they will be used for your future embeds.",
+		strings.Join(sites, ", "),
+	)
+	if _, err = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+		Content: &content,
+	}); err != nil {
+		return fmt.Errorf("send cookies response: %w", err)
 	}
 
 	return nil

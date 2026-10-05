@@ -16,7 +16,11 @@ import (
 	"github.com/google/uuid"
 )
 
-func Download(ctx context.Context, downloadURL string) (*Video, error) {
+// ErrLoginRequired is returned when yt-dlp needs cookies or credentials to download a video.
+var ErrLoginRequired = errors.New("login required")
+
+// Download downloads a video, authenticating with the Netscape formatted cookies if they are not empty.
+func Download(ctx context.Context, downloadURL string, cookies []byte) (*Video, error) {
 	log := logger.FromContext(ctx)
 	cfg := config.FromContext(ctx)
 
@@ -43,7 +47,7 @@ func Download(ctx context.Context, downloadURL string) (*Video, error) {
 	}()
 
 	// Download video using yt-dlp
-	path, err := ytdlp(ctx, link, downloadURL, id)
+	path, err := ytdlp(ctx, link, downloadURL, id, cookies)
 	if err != nil {
 		return nil, err
 	}
@@ -72,39 +76,60 @@ func Download(ctx context.Context, downloadURL string) (*Video, error) {
 	return v, nil
 }
 
-func ytdlp(ctx context.Context, link *url.URL, downloadURL string, id string) (string, error) {
+type auth struct {
+	cookies  string
+	username string
+	password string
+}
+
+func ytdlp(ctx context.Context, link *url.URL, downloadURL string, id string, cookies []byte) (string, error) {
 	log := logger.FromContext(ctx)
 	cfg := config.FromContext(ctx)
 
-	domain := strings.TrimPrefix(link.Hostname(), "www.")
-	username, password := creds(ctx, domain)
-	if username != "" && password != "" {
-		log.InfoContext(ctx, "downloading", "credentials", true)
+	// Try saved cookies, then configured credentials, then without authentication
+	var auths []auth
+	if len(cookies) > 0 {
+		// yt-dlp only reads cookies from a file, so keep the decrypted copy for as short as possible
+		cookiesPath, err := writeCookies(cfg.TempDir, id, cookies)
+		if err != nil {
+			return "", errors.Join(errors.New("could not write cookies"), err)
+		}
+		defer func() {
+			if removeErr := os.Remove(cookiesPath); removeErr != nil {
+				log.WarnContext(ctx, "could not remove cookies file", "error", removeErr)
+			}
+		}()
 
-		path, err := runYTDLP(ctx, ytdlpArgs(cfg.FilesDir, id, downloadURL, username, password), cfg.FilesDir, id)
+		auths = append(auths, auth{cookies: cookiesPath})
+	}
+	domain := strings.TrimPrefix(link.Hostname(), "www.")
+	if username, password := creds(ctx, domain); username != "" && password != "" {
+		auths = append(auths, auth{username: username, password: password})
+	}
+	auths = append(auths, auth{})
+
+	var err error
+	for index, a := range auths {
+		log.InfoContext(ctx, "downloading", "cookies", a.cookies != "", "credentials", a.username != "")
+
+		var path string
+		path, err = runYTDLP(ctx, ytdlpArgs(cfg.FilesDir, id, downloadURL, a), cfg.FilesDir, id)
 		if err == nil {
 			return path, nil
 		}
 
-		log.WarnContext(ctx, "could not download with credentials, trying without", "error", err)
-		if cleanupErr := cleanupDownloadArtifacts(cfg.FilesDir, id); cleanupErr != nil {
-			return "", errors.Join(errors.New("could not clean credentialed download artifacts"), cleanupErr)
-		}
-	}
-
-	log.InfoContext(ctx, "downloading", "credentials", false)
-	path, err := runYTDLP(ctx, ytdlpArgs(cfg.FilesDir, id, downloadURL, "", ""), cfg.FilesDir, id)
-	if err != nil {
 		if cleanupErr := cleanupDownloadArtifacts(cfg.FilesDir, id); cleanupErr != nil {
 			return "", errors.Join(err, cleanupErr)
 		}
-		return "", err
+		if index < len(auths)-1 {
+			log.WarnContext(ctx, "could not download, trying next authentication method", "error", err)
+		}
 	}
 
-	return path, nil
+	return "", err
 }
 
-func ytdlpArgs(filesDir string, id string, downloadURL string, username string, password string) []string {
+func ytdlpArgs(filesDir string, id string, downloadURL string, a auth) []string {
 	args := []string{
 		"--ignore-config",
 		"--no-playlist",
@@ -113,8 +138,11 @@ func ytdlpArgs(filesDir string, id string, downloadURL string, username string, 
 		"--output", fmt.Sprintf("%s.%%(ext)s", filepath.Join(filesDir, id)),
 		"--print", "after_move:filepath",
 	}
-	if username != "" && password != "" {
-		args = append(args, "--username", username, "--password", password)
+	if a.cookies != "" {
+		args = append(args, "--cookies", a.cookies)
+	}
+	if a.username != "" && a.password != "" {
+		args = append(args, "--username", a.username, "--password", a.password)
 	}
 
 	return append(args, downloadURL)
@@ -123,6 +151,10 @@ func ytdlpArgs(filesDir string, id string, downloadURL string, username string, 
 func runYTDLP(ctx context.Context, args []string, filesDir string, id string) (string, error) {
 	out, err := exec.CommandContext(ctx, "yt-dlp", args...).Output()
 	if err != nil {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) && loginRequired(string(exitErr.Stderr)) {
+			return "", fmt.Errorf("yt-dlp failed: %w: %w", ErrLoginRequired, err)
+		}
 		return "", fmt.Errorf("yt-dlp failed: %w", err)
 	}
 
@@ -132,6 +164,26 @@ func runYTDLP(ctx context.Context, args []string, filesDir string, id string) (s
 	}
 
 	return validateFinalPath(filesDir, id, path)
+}
+
+// loginRequired reports whether yt-dlp failed because it needs cookies or credentials.
+func loginRequired(stderr string) bool {
+	for line := range strings.Lines(stderr) {
+		if strings.HasPrefix(line, "ERROR:") && strings.Contains(line, "--cookies") {
+			return true
+		}
+	}
+
+	return false
+}
+
+func writeCookies(tempDir string, id string, cookies []byte) (string, error) {
+	path := filepath.Join(tempDir, id+".cookies.txt")
+	if err := os.WriteFile(path, cookies, 0600); err != nil {
+		return "", err
+	}
+
+	return path, nil
 }
 
 func parseFinalPath(output string) (string, error) {

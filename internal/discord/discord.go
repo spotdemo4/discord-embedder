@@ -104,16 +104,33 @@ func applicationCommands() []*discordgo.ApplicationCommand {
 			},
 		},
 		{
+			Name:        "cookies",
+			Description: "Save your cookies for TikTok, Reddit, Instagram, and X logins, only visible to you",
+			Options: []*discordgo.ApplicationCommandOption{
+				{
+					Name:        "file",
+					Description: "Netscape cookies.txt exported from a logged in browser",
+					Type:        discordgo.ApplicationCommandOptionAttachment,
+					Required:    true,
+				},
+			},
+		},
+		{
 			Name:        "version",
 			Description: "Show application and dependency versions",
 		},
 	}
 }
 
-// errMsg attempts to parse an exec.ExitError to return a more useful error message.
+// errMsg attempts to parse a loginRequiredError or exec.ExitError to return a more useful error message.
 func errMsg(err error) string {
 	if err == nil {
 		return ""
+	}
+
+	var loginErr *loginRequiredError
+	if errors.As(err, &loginErr) {
+		return loginErr.message()
 	}
 
 	var exitErr *exec.ExitError
