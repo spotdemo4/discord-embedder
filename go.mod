@@ -2,7 +2,7 @@ module trev.zip/llc/discord-embedder
 
 go 1.26.1
 
-toolchain go1.27.1
+toolchain go1.27.2
 
 require (
 	github.com/bwmarrin/discordgo v0.29.0
@@ -10,7 +10,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/veqryn/slog-context v0.9.0
-	golang.org/x/net v0.59.0
+	golang.org/x/net v0.60.0
 )
 
 require (
