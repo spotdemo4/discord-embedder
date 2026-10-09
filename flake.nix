@@ -102,7 +102,7 @@
           default = pkgs.mkGoModule (
             final: with pkgs.lib; {
               pname = "discord-embedder";
-              version = "0.7.0";
+              version = "0.7.1";
               ldflags = [ "-X trev.zip/llc/discord-embedder/internal/version.Application=${final.version}" ];
 
               src = fileset.toSource {
