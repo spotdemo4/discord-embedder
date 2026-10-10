@@ -115,7 +115,7 @@
                 ];
               };
               goSum = ./go.sum;
-              vendorHash = "sha256-WV1r2eh+33Os0nF46Y2jyrFCBiRiUhFe7/EgFK/uZ58=";
+              vendorHash = "sha256-88uh6XvNLiSK5x5rV/agHrNwq7fRiO6dsyJh7k+OVsk=";
 
               nativeBuildInputs = with pkgs; [
                 makeWrapper
