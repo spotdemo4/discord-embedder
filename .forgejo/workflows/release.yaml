@@ -29,7 +29,8 @@ jobs:
       - name: Release to Forgejo
         run: flake-release
         env:
-          GITHUB_TOKEN: ${{ secrets.DOCTOR_TOKEN }}
+          GIT_TOKEN: ${{ secrets.DOCTOR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           PACKAGE_REGISTRY_TOKEN: ${{ secrets.PACKAGE_TOKEN }}
           CONTAINER_REGISTRY_PASSWORD: ${{ secrets.PACKAGE_TOKEN }}
           DELETE_OLD_RELEASE_ARTIFACTS: 2

@@ -1,3 +1,4 @@
+// Package cookies stores encrypted yt-dlp cookies for each Discord user.
 package cookies
 
 import (
@@ -270,7 +271,7 @@ func write(path string, data []byte) error {
 	if err != nil {
 		return err
 	}
-	defer os.Remove(file.Name())
+	defer func() { _ = os.Remove(file.Name()) }()
 
 	if _, err = file.Write(data); err != nil {
 		return errors.Join(err, file.Close())

@@ -95,7 +95,7 @@ func saveCookies(ctx context.Context, userID string, attachment *discordgo.Messa
 	if err != nil {
 		return nil, errors.Join(errors.New("could not download cookies file"), err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("could not download cookies file: %s", resp.Status)
 	}

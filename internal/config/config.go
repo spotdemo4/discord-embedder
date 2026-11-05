@@ -1,3 +1,4 @@
+// Package config loads the application configuration from the environment.
 package config
 
 import (
@@ -15,6 +16,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// Config is the application configuration, read from environment variables.
 type Config struct {
 	DiscordToken         string   `env:"DISCORD_TOKEN,required"`
 	DiscordApplicationID string   `env:"DISCORD_APPLICATION_ID,required"`
@@ -39,6 +41,7 @@ type Config struct {
 	XPassword         string `env:"X_PASSWORD"`
 }
 
+// New loads the configuration from the environment and a .env file, if one exists.
 func New(ctx context.Context) (*Config, error) {
 	log := logger.FromContext(ctx)
 
@@ -154,6 +157,7 @@ func validatePath(ctx context.Context, path string) error {
 // Key is a base64 encoded AES-256 key.
 type Key []byte
 
+// UnmarshalText decodes a base64 encoded 32 byte key.
 func (k *Key) UnmarshalText(text []byte) error {
 	key, err := base64.StdEncoding.DecodeString(strings.TrimSpace(string(text)))
 	if err != nil {
@@ -169,10 +173,12 @@ func (k *Key) UnmarshalText(text []byte) error {
 
 type configKey struct{}
 
+// WithConfig returns a copy of ctx that carries config.
 func WithConfig(ctx context.Context, config *Config) context.Context {
 	return context.WithValue(ctx, configKey{}, config)
 }
 
+// FromContext returns the configuration carried by ctx, or an empty one.
 func FromContext(ctx context.Context) *Config {
 	if ctx == nil {
 		return &Config{}

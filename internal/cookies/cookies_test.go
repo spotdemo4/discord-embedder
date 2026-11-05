@@ -275,7 +275,7 @@ func TestSaveRejectsUnsafeUserIDs(t *testing.T) {
 	ctx := testContext(t, t.TempDir())
 	data := []byte("# Netscape HTTP Cookie File\n.tiktok.com\tTRUE\t/\tTRUE\t0\tsessionid\tsecret\n")
 
-	for _, userID := range []string{"", ".", "..", "../user", `user\other`} {
+	for _, userID := range []string{"", ".", "..", "../user", `user\name`} {
 		if _, err := Save(ctx, userID, data); err == nil {
 			t.Errorf("Save() with user ID %q expected error", userID)
 		}

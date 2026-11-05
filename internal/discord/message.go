@@ -26,13 +26,13 @@ func onMessage(ctx context.Context) any {
 			return
 		}
 		// Check if message is URL
-		u, err := url.ParseRequestURI(i.Message.Content)
+		u, err := url.ParseRequestURI(i.Content)
 		if err != nil || u.Scheme == "" || u.Host == "" {
 			return
 		}
 
 		log := logger.FromContext(ctx)
-		nctx := slogctx.Append(ctx, "message_id", i.Message.ID)
+		nctx := slogctx.Append(ctx, "message_id", i.ID)
 
 		// Handle message
 		var msg *discordgo.Message
@@ -53,7 +53,7 @@ func onMessage(ctx context.Context) any {
 		}
 
 		// Delete original message
-		if err = s.ChannelMessageDelete(i.ChannelID, i.Message.ID); err != nil {
+		if err = s.ChannelMessageDelete(i.ChannelID, i.ID); err != nil {
 			log.ErrorContext(nctx, "could not delete original message", "error", err)
 		}
 	}
@@ -78,10 +78,10 @@ func handleMessage(
 			log.ErrorContext(ctx, "could not delete message", "error", err)
 		}
 	}()
-	ctx = slogctx.Append(ctx, "url", i.Message.Content)
+	ctx = slogctx.Append(ctx, "url", i.Content)
 
 	// Download video
-	v, err := download(ctx, i.Author.ID, i.Message.Content)
+	v, err := download(ctx, i.Author.ID, i.Content)
 	if err != nil {
 		log.ErrorContext(ctx, "could not get video", "error", err)
 		return nil, err

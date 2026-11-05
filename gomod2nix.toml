@@ -1,0 +1,54 @@
+schema = 3
+cachePackages = [
+  'github.com/bwmarrin/discordgo',
+  'github.com/caarlos0/env/v11',
+  'github.com/go-logr/logr',
+  'github.com/google/uuid',
+  'github.com/gorilla/websocket',
+  'github.com/joho/godotenv',
+  'github.com/veqryn/slog-context',
+  'golang.org/x/crypto/nacl/secretbox',
+  'golang.org/x/crypto/salsa20/salsa',
+  'golang.org/x/net/publicsuffix'
+]
+
+[mod]
+  [mod.'github.com/bwmarrin/discordgo']
+    version = 'v0.29.0'
+    hash = 'sha256-jQIKWk4xc7iFK+XoPlX5p5cgab4yYo7Qs1eDoDlVjzg='
+
+  [mod.'github.com/caarlos0/env/v11']
+    version = 'v11.4.2'
+    hash = 'sha256-zFKYH1i7KQNAU3ugwD/ugiQWj5hCzYNw8TrXSeg7j0U='
+
+  [mod.'github.com/go-logr/logr']
+    version = 'v1.4.3'
+    hash = 'sha256-Nnp/dEVNMxLp3RSPDHZzGbI8BkSNuZMX0I0cjWKXXLA='
+
+  [mod.'github.com/google/uuid']
+    version = 'v1.6.0'
+    hash = 'sha256-VWl9sqUzdOuhW0KzQlv0gwwUQClYkmZwSydHG2sALYw='
+
+  [mod.'github.com/gorilla/websocket']
+    version = 'v1.5.3'
+    hash = 'sha256-vTIGEFMEi+30ZdO6ffMNJ/kId6pZs5bbyqov8xe9BM0='
+
+  [mod.'github.com/joho/godotenv']
+    version = 'v1.5.1'
+    hash = 'sha256-kA0osKfsc6Kp+nuGTRJyXZZlJt1D/kuEazKMWYCWcQ8='
+
+  [mod.'github.com/veqryn/slog-context']
+    version = 'v0.9.0'
+    hash = 'sha256-ABf3fRR34Ts+1YabrSP3IGcgeLrj7gdxKefPMNHRhwU='
+
+  [mod.'golang.org/x/crypto']
+    version = 'v0.58.0'
+    hash = 'sha256-33ioL7suoYfgBIEQDAeqy+lwhbCgy885BkcXavowffo='
+
+  [mod.'golang.org/x/net']
+    version = 'v0.62.0'
+    hash = 'sha256-BX+i/MyhVigz/sDRJNGydfkimaeAHAFtrRN//eXuZFY='
+
+  [mod.'golang.org/x/sys']
+    version = 'v0.49.0'
+    hash = 'sha256-/1S3yy3in72ygZT1CKymvOzJZqCMYiGSqZDfvSyB3LI='

@@ -1,9 +1,9 @@
-# Git attributes
 # https://git-scm.com/docs/gitattributes
 
 # Linguist: Go lock files are generated
 flake.lock linguist-generated=true
 go.sum linguist-generated=true
+gomod2nix.toml linguist-generated=true
 
 # Go source files use Go diff driver
 *.go diff=go linguist-language=Go

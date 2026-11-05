@@ -48,7 +48,7 @@ nix run git+https://trev.zip/llc/discord-embedder.git
 ### go
 
 ```sh
-GOPROXY=https://trev.zip/api/packages/llc/go \
+GOPROXY=https://trev.zip/api/packages/llc/go,https://proxy.golang.org,direct \
     go install trev.zip/llc/discord-embedder@latest
 ```
 

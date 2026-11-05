@@ -1,0 +1,100 @@
+# yaml-language-server: $schema=https://golangci-lint.run/jsonschema/golangci.jsonschema.json
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - bodyclose
+    - errcheck
+    - errorlint
+    - govet
+    - misspell
+    - modernize
+    - nilerr
+    - noctx
+    - nolintlint
+    - revive
+    - rowserrcheck
+    - staticcheck
+    - unused
+  settings:
+    errcheck:
+      exclude-functions:
+        # govet unusedresult reports these
+        - errors.New
+        - fmt.Errorf
+    govet:
+      enable:
+        - atomicalign
+        - deepequalerrors
+        - nilness
+        - sortslice
+        - unusedwrite # covers staticcheck SA4005 and more
+      disable:
+        - httpresponse # staticcheck SA5001
+    staticcheck:
+      checks:
+        - all
+        - -S1010 # gofmt simplify
+        - -SA1006 # govet printf
+        - -SA1014 # govet unmarshal
+        - -SA1017 # govet sigchanyzer
+        - -SA1028 # govet sortslice
+        - -SA2000 # govet waitgroup
+        - -SA2002 # govet testinggoroutine
+        - -SA4005 # govet unusedwrite
+        - -SA4018 # govet assign
+        - -SA4021 # govet appends
+        - -SA5009 # govet printf
+        - -SA5010 # govet ifaceassert
+        - -SA9006 # govet shift
+        - -ST1020 # revive exported
+        - -ST1021 # revive exported
+        - -ST1022 # revive exported
+        - -ST1023 # revive var-declaration
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+    revive:
+      # only rules that staticcheck and govet do not cover
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: exported
+        - name: increment-decrement
+        - name: indent-error-flow
+        - name: redefines-builtin-id
+        - name: superfluous-else
+        - name: unexported-return
+        - name: unused-parameter
+        - name: var-declaration
+  exclusions:
+    rules:
+      # govet bools reports redundant || and &&
+      - linters: [staticcheck]
+        text: "SA4000: identical expressions on the left and right side of the '(\\|\\||&&)' operator"
+      # gofmt simplify rewrites these
+      - linters: [staticcheck]
+        text: "S1005:"
+        source: "\\brange\\b"
+      # errcheck requires these to discard a received error
+      - linters: [staticcheck]
+        text: "S1005:"
+        source: "\\b_ = <-"
+      # govet unusedresult reports these
+      - linters: [staticcheck]
+        text: "SA4017:"
+        source: "\\b(errors\\.New|fmt\\.(Errorf|Sprint|Sprintf)|sort\\.Reverse)\\("
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    gofmt:
+      simplify: true
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  uniq-by-line: false

@@ -13,6 +13,7 @@ import (
 	"trev.zip/llc/discord-embedder/internal/video"
 )
 
+// Page is the data for a video's embed page.
 type Page struct {
 	ImageURL  string
 	VideoURL  string

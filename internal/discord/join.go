@@ -15,9 +15,9 @@ func onJoin(ctx context.Context, commands []*discordgo.ApplicationCommand) any {
 		cfg := config.FromContext(ctx)
 
 		// register commands
-		_, err := s.ApplicationCommandBulkOverwrite(cfg.DiscordApplicationID, e.Guild.ID, commands)
+		_, err := s.ApplicationCommandBulkOverwrite(cfg.DiscordApplicationID, e.ID, commands)
 		if err != nil {
-			log.WarnContext(ctx, "could not register commands for guild", "guild id", e.Guild.ID, "error", err)
+			log.WarnContext(ctx, "could not register commands for guild", "guild id", e.ID, "error", err)
 		}
 	}
 }

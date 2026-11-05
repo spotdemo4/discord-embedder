@@ -1,3 +1,4 @@
+// Package video downloads, transcodes and stores videos.
 package video
 
 import (
@@ -11,17 +12,20 @@ import (
 	"trev.zip/llc/discord-embedder/internal/config"
 )
 
+// File is a file in the files directory.
 type File struct {
 	Name string
 	Path string
 }
 
+// Thumbnail is a video's thumbnail image.
 type Thumbnail struct {
 	File
 }
 
 const originalURLMetadataKey = "original_url"
 
+// Video is a downloaded video and its thumbnail.
 type Video struct {
 	File
 
@@ -30,6 +34,7 @@ type Video struct {
 	originalURL string
 }
 
+// Get finds the stored video with the given ID.
 func Get(ctx context.Context, id string) (*Video, error) {
 	cfg := config.FromContext(ctx)
 	entries, err := os.ReadDir(cfg.FilesDir)

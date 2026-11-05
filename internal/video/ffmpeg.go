@@ -40,7 +40,7 @@ func (v *Video) Compress(ctx context.Context, factor float64) error {
 	}
 
 	tempPath, finalName, finalPath := compressionOutputPaths(cfg.TempDir, cfg.FilesDir, v.ID)
-	defer os.Remove(tempPath)
+	defer func() { _ = os.Remove(tempPath) }()
 
 	cmd := exec.CommandContext(ctx, "ffmpeg", compressionArgs(v.Path, tempPath, videoCodec, audioCodec, factor, cfg.Quicksync, v.originalURL)...)
 	out, err := cmd.Output()
@@ -144,7 +144,7 @@ func (v *Video) Trim(ctx context.Context, start string, end string) error {
 	log := logger.FromContext(ctx)
 	cfg := config.FromContext(ctx)
 	tempPath := trimOutputPath(cfg.TempDir, v.ID, v.Name)
-	defer os.Remove(tempPath)
+	defer func() { _ = os.Remove(tempPath) }()
 
 	cmd := exec.CommandContext(ctx, "ffmpeg", trimArgs(v.Path, tempPath, start, end)...)
 	out, err := cmd.Output()
@@ -251,21 +251,21 @@ func move(src string, dst string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open source file: %w", err)
 	}
-	defer srcFile.Close()
+	defer func() { _ = srcFile.Close() }()
 
 	tempFile, err := os.CreateTemp(filepath.Dir(dst), "."+filepath.Base(dst)+".*")
 	if err != nil {
 		return fmt.Errorf("failed to create destination file: %w", err)
 	}
 	tempPath := tempFile.Name()
-	defer os.Remove(tempPath)
+	defer func() { _ = os.Remove(tempPath) }()
 
 	if _, err = io.Copy(tempFile, srcFile); err != nil {
-		tempFile.Close()
+		_ = tempFile.Close()
 		return fmt.Errorf("failed to copy file content: %w", err)
 	}
 	if err = tempFile.Sync(); err != nil {
-		tempFile.Close()
+		_ = tempFile.Close()
 		return fmt.Errorf("failed to sync destination file: %w", err)
 	}
 	if err = tempFile.Close(); err != nil {

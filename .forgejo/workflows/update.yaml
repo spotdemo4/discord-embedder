@@ -29,7 +29,7 @@ jobs:
       - name: Renovate
         run: renovate
         env:
-          RENOVATE_CONFIG_FILE: .forgejo/renovate.json
+          RENOVATE_CONFIG_FILE: .forgejo/renovate.jsonc
           RENOVATE_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
           RENOVATE_GITHUB_COM_TOKEN: ${{ secrets.GH_TOKEN }}
           LOG_LEVEL: ${{ inputs.debug && 'debug' || 'info' }}

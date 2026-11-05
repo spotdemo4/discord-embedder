@@ -27,7 +27,7 @@ func fileHandler(cfg *config.Config) func(http.ResponseWriter, *http.Request) {
 				http.Error(w, "Not found", http.StatusNotFound)
 				return
 			}
-			defer file.Close()
+			defer func() { _ = file.Close() }()
 
 			// Set response headers
 			w.Header().Set("Access-Control-Allow-Origin", "*")

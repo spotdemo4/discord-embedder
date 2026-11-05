@@ -1,3 +1,4 @@
+// Package version reports the versions of the application and its runtime dependencies.
 package version
 
 import (
@@ -8,8 +9,10 @@ import (
 	"strings"
 )
 
+// Application is the application version, set at build time.
 var Application = "dev"
 
+// YTDLP returns the version of the installed yt-dlp.
 func YTDLP(ctx context.Context) (string, error) {
 	output, err := exec.CommandContext(ctx, "yt-dlp", "--version").Output()
 	if err != nil {
@@ -24,6 +27,7 @@ func YTDLP(ctx context.Context) (string, error) {
 	return version, nil
 }
 
+// FFmpeg returns the version of the installed FFmpeg.
 func FFmpeg(ctx context.Context) (string, error) {
 	output, err := exec.CommandContext(ctx, "ffmpeg", "-version").Output()
 	if err != nil {

@@ -2,7 +2,7 @@ module trev.zip/llc/discord-embedder
 
 go 1.26.1
 
-toolchain go1.27.3
+toolchain go1.26.10
 
 require (
 	github.com/bwmarrin/discordgo v0.29.0

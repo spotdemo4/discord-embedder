@@ -1,3 +1,4 @@
+// Package web serves video embed pages and files.
 package web
 
 import (
@@ -14,6 +15,7 @@ import (
 
 const timeout = 5 * time.Second
 
+// New serves the web server until ctx is canceled.
 func New(ctx context.Context, home embed.FS) error {
 	cfg := config.FromContext(ctx)
 	log := logger.FromContext(ctx)

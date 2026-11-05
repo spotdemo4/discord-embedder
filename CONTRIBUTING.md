@@ -41,10 +41,10 @@ go run .
 nix fmt
 ```
 
-with [gofmt](https://pkg.go.dev/cmd/gofmt):
+with [golangci-lint](https://golangci-lint.run/):
 
 ```sh
-gofmt -w .
+golangci-lint fmt
 ```
 
 ### check
@@ -53,13 +53,11 @@ gofmt -w .
 nix flake check
 ```
 
-with [go](https://go.dev/) and [staticcheck](https://staticcheck.dev/):
+with [go](https://go.dev/) and [golangci-lint](https://golangci-lint.run/):
 
 ```sh
 go test ./...
-go vet ./...
-staticcheck ./...
-go fix -diff ./...
+golangci-lint run ./...
 ```
 
 ### build
@@ -72,6 +70,21 @@ with [go](https://go.dev/):
 
 ```sh
 go build ./...
+```
+
+### dependencies
+
+after changing `go.mod`, tidy it and update `gomod2nix.toml`:
+
+```sh
+nix run .#update-deps
+```
+
+with [go](https://go.dev/) and [gomod2nix](https://github.com/nix-community/gomod2nix):
+
+```sh
+go mod tidy
+gomod2nix generate --with-deps
 ```
 
 ### release

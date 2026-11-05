@@ -1,3 +1,4 @@
+// Package discord runs the Discord bot that embeds videos.
 package discord
 
 import (
@@ -17,6 +18,7 @@ const (
 	embedSpeedDouble     = "x2"
 )
 
+// New connects to Discord and handles events until ctx is canceled.
 func New(ctx context.Context) error {
 	log := logger.FromContext(ctx)
 	cfg := config.FromContext(ctx)
@@ -128,8 +130,7 @@ func errMsg(err error) string {
 		return ""
 	}
 
-	var loginErr *loginRequiredError
-	if errors.As(err, &loginErr) {
+	if loginErr, ok := errors.AsType[*loginRequiredError](err); ok {
 		return loginErr.message()
 	}
 

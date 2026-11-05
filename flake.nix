@@ -18,12 +18,18 @@
       inputs.systems.follows = "systems";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    gomod2nix = {
+      url = "github:nix-community/gomod2nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utils.inputs.systems.follows = "systems";
+    };
   };
 
   outputs =
     {
       self,
       trevpkgs,
+      gomod2nix,
       ...
     }:
     trevpkgs.libs.mkFlake (
@@ -39,12 +45,13 @@
         devShells = {
           default = pkgs.mkShell {
             shellHook = pkgs.shellhook.ref;
+            env.GOTOOLCHAIN = "local";
             packages = with pkgs; [
               # go
               go
               gopls
               gotools
-              go-tools
+              golangci-lint
 
               # deps
               ffmpeg-qsv
@@ -62,7 +69,7 @@
               # util
               treefmt
               bumper
-              fix-hash
+              gomod2nix.packages.${system}.default
             ];
           };
 
@@ -83,7 +90,6 @@
             packages = with pkgs; [
               renovate
               go # go mod tidy
-              fix-hash # vendorHash
             ];
           };
 
@@ -94,6 +100,20 @@
               flake-checker # nix
               zizmor # actions
             ];
+          };
+        };
+
+        # nix run [#...]
+        apps = pkgs.mkApps {
+          update-deps = {
+            packages = with pkgs; [
+              go
+              gomod2nix.packages.${system}.default
+            ];
+            script = ''
+              go mod tidy
+              gomod2nix generate --with-deps
+            '';
           };
         };
 
@@ -115,7 +135,7 @@
                 ];
               };
               goSum = ./go.sum;
-              vendorHash = "sha256-zM//Rhb/hb8X3WSZ65O8VGBBp5r/d120Sv0LVNLQB58=";
+              modules = ./gomod2nix.toml;
 
               nativeBuildInputs = with pkgs; [
                 makeWrapper
@@ -154,8 +174,10 @@
                 platforms = platforms.unix;
                 badPlatforms = [ systems.inspect.platformPatterns.isStatic ];
                 homepage = "https://trev.zip/llc/discord-embedder";
-                changelog = "https://trev.zip/llc/discord-embedder/releases";
-                downloadPage = "https://trev.zip/llc/discord-embedder/releases/tag/v${final.version}";
+                downloadPage = "https://trev.zip/llc/discord-embedder/releases";
+                changelog = "https://trev.zip/llc/discord-embedder/releases/tag/v${final.version}";
+                sourceProvenance = [ sourceTypes.fromSource ];
+                maintainers = [ maintainers.spotdemo4 ];
               };
             }
           );
@@ -175,7 +197,7 @@
         formatter = pkgs.treefmt.withConfig {
           configFile = ./treefmt.toml;
           runtimeInputs = with pkgs; [
-            go
+            golangci-lint
             nixfmt
             oxfmt
           ];
@@ -185,13 +207,12 @@
         checks = pkgs.mkChecks {
           inherit (self.packages.${system}) default;
 
-          go = {
+          go-lint = {
             src = self.packages.${system}.default;
-            packages = with pkgs; [ go-tools ];
+            packages = with pkgs; [ golangci-lint ];
             script = ''
-              go vet ./...
-              staticcheck ./...
-              go fix -diff ./...
+              cp ${./.golangci.yaml} .golangci.yaml
+              golangci-lint run ./...
             '';
           };
 
@@ -234,12 +255,12 @@
 
           renovate-fj = {
             root = ./.forgejo;
-            files = ./.forgejo/renovate.json;
+            files = ./.forgejo/renovate.jsonc;
             packages = with pkgs; [
               renovate
             ];
             script = ''
-              renovate-config-validator renovate.json
+              renovate-config-validator renovate.jsonc
             '';
           };
 
@@ -255,7 +276,13 @@
 
           config = {
             root = ./.;
-            filter = file: file.hasExt "json" || file.hasExt "yaml" || file.hasExt "toml" || file.hasExt "md";
+            filter =
+              file:
+              file.hasExt "json"
+              || file.hasExt "jsonc"
+              || file.hasExt "yaml"
+              || file.hasExt "toml"
+              || file.hasExt "md";
             packages = with pkgs; [
               oxfmt
             ];

@@ -1,0 +1,84 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-global-schema.json",
+
+  // self-hosted
+  "onboarding": false,
+  "requireConfig": "ignored",
+  "platform": "forgejo",
+  "endpoint": "https://trev.zip/api/v1",
+  "repositories": ["llc/discord-embedder"],
+  "allowedCommands": ["^nix run \\.#update-deps$"],
+
+  // repository
+  "extends": ["config:recommended"],
+  "addLabels": ["dep"],
+  "nix": {
+    "enabled": true
+  },
+  // fix PRs for vulnerable direct and indirect go modules, from osv.dev
+  "osvVulnerabilityAlerts": true,
+  "dependencyDashboardOSVVulnerabilitySummary": "unresolved",
+  "vulnerabilityAlerts": {
+    "addLabels": ["security"],
+    "automerge": true
+  },
+  "lockFileMaintenance": {
+    "enabled": true,
+    "automerge": true,
+    "schedule": ["* * * * 0"], // sunday
+    "skipInstalls": false
+  },
+  "customManagers": [
+    {
+      // track the go in nixpkgs-unstable, which builds this project
+      "customType": "regex",
+      "managerFilePatterns": ["/(^|/)go\\.mod$/"],
+      "matchStrings": ["toolchain\\s+go(?<currentValue>\\S+)"],
+      "depNameTemplate": "go",
+      "packageNameTemplate": "nix_unstable/go",
+      "datasourceTemplate": "repology",
+      "versioningTemplate": "semver"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "automerge": true
+    },
+    {
+      "matchManagers": ["nix"],
+      "addLabels": ["nix"]
+    },
+    {
+      // update yt-dlp and ffmpeg promptly, with every flake input in one PR
+      "matchManagers": ["nix"],
+      "matchUpdateTypes": ["digest"],
+      "groupName": "flake inputs"
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "addLabels": ["actions"]
+    },
+    {
+      "matchManagers": ["gomod"],
+      "addLabels": ["go"],
+      "postUpdateOptions": ["gomodUpdateImportPaths"],
+      // gomod2nix.toml has an entry per module, so updates do not conflict
+      "postUpgradeTasks": {
+        "commands": ["nix run .#update-deps"],
+        "executionMode": "branch"
+      }
+    },
+    {
+      // replaced by the nixpkgs-unstable custom manager
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["toolchain"],
+      "enabled": false
+    },
+    {
+      "matchManagers": ["custom.regex"],
+      "matchDepNames": ["go"],
+      "addLabels": ["go"]
+    }
+  ]
+}

@@ -367,8 +367,7 @@ exit 1
 	if !errors.Is(err, ErrLoginRequired) {
 		t.Errorf("ytdlp() error = %v, want ErrLoginRequired", err)
 	}
-	var exitErr *exec.ExitError
-	if !errors.As(err, &exitErr) {
+	if _, ok := errors.AsType[*exec.ExitError](err); !ok {
 		t.Errorf("ytdlp() error = %v, want exec.ExitError", err)
 	}
 }
