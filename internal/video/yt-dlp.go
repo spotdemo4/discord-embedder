@@ -63,10 +63,6 @@ func Download(ctx context.Context, downloadURL string, cookies []byte) (*Video, 
 		},
 	}
 
-	if err = requireAudio(ctx, v.Path); err != nil {
-		return nil, errors.Join(errors.New("downloaded media must contain audio"), err)
-	}
-
 	// Generate thumbnail
 	if err = v.thumbnail(ctx); err != nil {
 		return nil, errors.Join(errors.New("could not generate thumbnail"), err)

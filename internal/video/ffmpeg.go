@@ -31,12 +31,10 @@ func (v *Video) Compress(ctx context.Context, factor float64) error {
 		return errors.New("input media contains no video stream")
 	}
 
+	// An empty audio codec means the video has no audio stream
 	audioCodec, err := probeCodec(ctx, v.Path, "a:0")
 	if err != nil {
 		return fmt.Errorf("could not inspect audio codec: %w", err)
-	}
-	if audioCodec == "" {
-		return errors.New("media contains no audio stream")
 	}
 
 	tempPath, finalName, finalPath := compressionOutputPaths(cfg.TempDir, cfg.FilesDir, v.ID)
@@ -50,8 +48,10 @@ func (v *Video) Compress(ctx context.Context, factor float64) error {
 
 	log.DebugContext(ctx, "ffmpeg", "output", string(out))
 
-	if err = requireAudio(ctx, tempPath); err != nil {
-		return fmt.Errorf("compressed video must contain audio: %w", err)
+	if audioCodec != "" {
+		if err = requireAudio(ctx, tempPath); err != nil {
+			return fmt.Errorf("compressed video must contain audio: %w", err)
+		}
 	}
 
 	sourcePath := v.Path
@@ -73,6 +73,7 @@ func (v *Video) Compress(ctx context.Context, factor float64) error {
 
 func compressionArgs(input string, output string, videoCodec string, audioCodec string, factor float64, quicksync bool, originalURL string) []string {
 	adjustSpeed := factor != 1
+	audio := audioCodec != ""
 	transcodeVideo := adjustSpeed || videoCodec != "h264"
 	transcodeAudio := adjustSpeed || audioCodec != "aac"
 	args := []string{"-y"}
@@ -83,22 +84,15 @@ func compressionArgs(input string, output string, videoCodec string, audioCodec 
 		)
 	}
 
-	args = append(args,
-		"-i", input,
-		"-map", "0:v:0",
-		"-map", "0:a:0",
-		"-sn",
-		"-dn",
-		"-map_metadata", "-1",
-		"-map_chapters", "-1",
-	)
+	args = append(args, "-i", input)
+	args = append(args, streamArgs(audio)...)
 
 	if adjustSpeed {
 		formattedFactor := strconv.FormatFloat(factor, 'f', -1, 64)
-		args = append(args,
-			"-filter:v:0", "setpts=PTS/"+formattedFactor,
-			"-filter:a:0", "atempo="+formattedFactor+",asetpts=PTS-STARTPTS+STARTPTS/"+formattedFactor,
-		)
+		args = append(args, "-filter:v:0", "setpts=PTS/"+formattedFactor)
+		if audio {
+			args = append(args, "-filter:a:0", "atempo="+formattedFactor+",asetpts=PTS-STARTPTS+STARTPTS/"+formattedFactor)
+		}
 	}
 
 	switch {
@@ -116,9 +110,11 @@ func compressionArgs(input string, output string, videoCodec string, audioCodec 
 		)
 	}
 
-	if transcodeAudio {
+	switch {
+	case !audio:
+	case transcodeAudio:
 		args = append(args, "-c:a:0", "aac")
-	} else {
+	default:
 		args = append(args, "-c:a:0", "copy")
 	}
 
@@ -146,7 +142,12 @@ func (v *Video) Trim(ctx context.Context, start string, end string) error {
 	tempPath := trimOutputPath(cfg.TempDir, v.ID, v.Name)
 	defer func() { _ = os.Remove(tempPath) }()
 
-	cmd := exec.CommandContext(ctx, "ffmpeg", trimArgs(v.Path, tempPath, start, end)...)
+	audio, err := hasAudio(ctx, v.Path)
+	if err != nil {
+		return fmt.Errorf("could not inspect audio stream: %w", err)
+	}
+
+	cmd := exec.CommandContext(ctx, "ffmpeg", trimArgs(v.Path, tempPath, start, end, audio)...)
 	out, err := cmd.Output()
 	if err != nil {
 		return fmt.Errorf("could not trim video: %w", err)
@@ -154,8 +155,10 @@ func (v *Video) Trim(ctx context.Context, start string, end string) error {
 
 	log.DebugContext(ctx, "ffmpeg", "output", string(out))
 
-	if err = requireAudio(ctx, tempPath); err != nil {
-		return fmt.Errorf("trimmed video must contain audio: %w", err)
+	if audio {
+		if err = requireAudio(ctx, tempPath); err != nil {
+			return fmt.Errorf("trimmed video must contain audio: %w", err)
+		}
 	}
 
 	if err = move(tempPath, v.Path); err != nil {
@@ -165,22 +168,35 @@ func (v *Video) Trim(ctx context.Context, start string, end string) error {
 	return nil
 }
 
-func trimArgs(input string, output string, start string, end string) []string {
-	return []string{
+func trimArgs(input string, output string, start string, end string, audio bool) []string {
+	args := []string{
 		"-y",
 		"-ss", start,
 		"-to", end,
 		"-i", input,
-		"-map", "0:v:0",
-		"-map", "0:a:0",
+	}
+	args = append(args, streamArgs(audio)...)
+
+	return append(args,
+		"-hide_banner",
+		"-loglevel", "error",
+		output,
+	)
+}
+
+// streamArgs maps the first video stream, and the first audio stream if audio is true, without inherited metadata.
+func streamArgs(audio bool) []string {
+	args := []string{"-map", "0:v:0"}
+	if audio {
+		args = append(args, "-map", "0:a:0")
+	}
+
+	return append(args,
 		"-sn",
 		"-dn",
 		"-map_metadata", "-1",
 		"-map_chapters", "-1",
-		"-hide_banner",
-		"-loglevel", "error",
-		output,
-	}
+	)
 }
 
 func trimOutputPath(tempDir string, id string, sourceName string) string {

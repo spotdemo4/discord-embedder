@@ -222,6 +222,48 @@ func TestCompressionArgs(t *testing.T) {
 				"/tmp/output.mp4",
 			},
 		},
+		{
+			name:       "copy h264 without audio",
+			videoCodec: "h264",
+			factor:     1,
+			want: []string{
+				"-y",
+				"-i", "/videos/input.webm",
+				"-map", "0:v:0",
+				"-sn",
+				"-dn",
+				"-map_metadata", "-1",
+				"-map_chapters", "-1",
+				"-c:v:0", "copy",
+				"-metadata", "original_url=https://example.com/video",
+				"-movflags", "+faststart+use_metadata_tags",
+				"-hide_banner",
+				"-loglevel", "error",
+				"/tmp/output.mp4",
+			},
+		},
+		{
+			name:       "speed up without audio",
+			videoCodec: "vp9",
+			factor:     2,
+			want: []string{
+				"-y",
+				"-i", "/videos/input.webm",
+				"-map", "0:v:0",
+				"-sn",
+				"-dn",
+				"-map_metadata", "-1",
+				"-map_chapters", "-1",
+				"-filter:v:0", "setpts=PTS/2",
+				"-c:v:0", "libx264",
+				"-crf:v:0", "23",
+				"-metadata", "original_url=https://example.com/video",
+				"-movflags", "+faststart+use_metadata_tags",
+				"-hide_banner",
+				"-loglevel", "error",
+				"/tmp/output.mp4",
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -373,40 +415,74 @@ func TestCompressProbeFailurePreservesSource(t *testing.T) {
 	}
 }
 
-func TestCompressMissingAudioPreservesSource(t *testing.T) {
-	filesDir := t.TempDir()
-	tempDir := t.TempDir()
-	id := "video-id"
-	sourcePath := filepath.Join(filesDir, id+".mp4")
-	if err := os.WriteFile(sourcePath, []byte("source"), 0600); err != nil {
-		t.Fatal(err)
+func TestCompressWithoutAudio(t *testing.T) {
+	tests := []struct {
+		name   string
+		factor float64
+	}{
+		{name: "normal speed", factor: 1},
+		{name: "faster", factor: 1.5},
 	}
-	ffmpegCalled := filepath.Join(t.TempDir(), "ffmpeg-called")
 
-	writeFakeCommand(t, "ffprobe", `
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			filesDir := t.TempDir()
+			tempDir := t.TempDir()
+			id := "video-id"
+			sourcePath := filepath.Join(filesDir, id+".webm")
+			if err := os.WriteFile(sourcePath, []byte("source"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			argsPath := filepath.Join(t.TempDir(), "ffmpeg-args")
+
+			writeFakeCommand(t, "ffprobe", `
 case " $* " in
-  *" -select_streams v:0 "*) printf 'h264\n' ;;
+  *" -select_streams v:0 "*) printf 'vp9\n' ;;
   *" -select_streams a:0 "*) exit 0 ;;
   *) exit 2 ;;
 esac
 `)
-	writeFakeCommand(t, "ffmpeg", `printf called > "$FAKE_FFMPEG_CALLED"`)
-	t.Setenv("FAKE_FFMPEG_CALLED", ffmpegCalled)
+			writeFakeCommand(t, "ffmpeg", `
+last=""
+for arg in "$@"; do
+  printf '%s\n' "$arg" >> "$FAKE_FFMPEG_ARGS"
+  last="$arg"
+done
+printf encoded > "$last"
+`)
+			t.Setenv("FAKE_FFMPEG_ARGS", argsPath)
 
-	ctx := config.WithConfig(context.Background(), &config.Config{
-		FilesDir: filesDir,
-		TempDir:  tempDir,
-	})
-	video := &Video{ID: id, File: File{Name: filepath.Base(sourcePath), Path: sourcePath}}
-	err := video.Compress(ctx, 1)
-	if err == nil || !strings.Contains(err.Error(), "media contains no audio stream") {
-		t.Fatalf("Compress() error = %v, want missing audio error", err)
-	}
-	if _, err = os.Stat(ffmpegCalled); !os.IsNotExist(err) {
-		t.Errorf("ffmpeg was called, error = %v", err)
-	}
-	if _, err = os.Stat(sourcePath); err != nil {
-		t.Errorf("source was removed: %v", err)
+			ctx := config.WithConfig(context.Background(), &config.Config{
+				FilesDir: filesDir,
+				TempDir:  tempDir,
+			})
+			video := &Video{ID: id, File: File{Name: filepath.Base(sourcePath), Path: sourcePath}}
+			if err := video.Compress(ctx, tt.factor); err != nil {
+				t.Fatalf("Compress() error = %v", err)
+			}
+
+			finalPath := filepath.Join(filesDir, id+".mp4")
+			if video.Name != id+".mp4" || video.Path != finalPath {
+				t.Errorf("Video = name %q path %q, want name %q path %q", video.Name, video.Path, id+".mp4", finalPath)
+			}
+			if _, err := os.Stat(finalPath); err != nil {
+				t.Errorf("final video missing: %v", err)
+			}
+			if _, err := os.Stat(sourcePath); !os.IsNotExist(err) {
+				t.Errorf("source still exists, error = %v", err)
+			}
+
+			args, err := os.ReadFile(argsPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			command := string(args)
+			for _, unwanted := range []string{"0:a:0", "-filter:a:0", "-c:a:0"} {
+				if strings.Contains(command, unwanted) {
+					t.Errorf("ffmpeg args contain %q for a video without audio: %q", unwanted, command)
+				}
+			}
+		})
 	}
 }
 
@@ -609,43 +685,6 @@ func TestCompressInvalidFactorPreservesSource(t *testing.T) {
 	}
 }
 
-func TestCompressAcceleratedMissingAudioPreservesSource(t *testing.T) {
-	filesDir := t.TempDir()
-	tempDir := t.TempDir()
-	id := "video-id"
-	sourcePath := filepath.Join(filesDir, id+".webm")
-	if err := os.WriteFile(sourcePath, []byte("source"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	ffmpegCalled := filepath.Join(t.TempDir(), "ffmpeg-called")
-
-	writeFakeCommand(t, "ffprobe", `
-case " $* " in
-  *" -select_streams v:0 "*) printf 'vp9\n' ;;
-  *" -select_streams a:0 "*) exit 0 ;;
-  *) exit 2 ;;
-esac
-`)
-	writeFakeCommand(t, "ffmpeg", `printf called > "$FAKE_FFMPEG_CALLED"`)
-	t.Setenv("FAKE_FFMPEG_CALLED", ffmpegCalled)
-
-	ctx := config.WithConfig(context.Background(), &config.Config{
-		FilesDir: filesDir,
-		TempDir:  tempDir,
-	})
-	video := &Video{ID: id, File: File{Name: filepath.Base(sourcePath), Path: sourcePath}}
-	err := video.Compress(ctx, 1.5)
-	if err == nil || !strings.Contains(err.Error(), "media contains no audio stream") {
-		t.Fatalf("Compress() error = %v, want missing audio error", err)
-	}
-	if _, err = os.Stat(ffmpegCalled); !os.IsNotExist(err) {
-		t.Errorf("ffmpeg was called, error = %v", err)
-	}
-	if _, err = os.Stat(sourcePath); err != nil {
-		t.Errorf("source was removed: %v", err)
-	}
-}
-
 func TestCompressAcceleratedFFmpegFailurePreservesSource(t *testing.T) {
 	filesDir := t.TempDir()
 	tempDir := t.TempDir()
@@ -749,24 +788,159 @@ printf encoded > "$last"
 }
 
 func TestTrimArgs(t *testing.T) {
-	want := []string{
-		"-y",
-		"-ss", "00:00:01",
-		"-to", "00:00:05",
-		"-i", "/videos/input.mkv",
-		"-map", "0:v:0",
-		"-map", "0:a:0",
-		"-sn",
-		"-dn",
-		"-map_metadata", "-1",
-		"-map_chapters", "-1",
-		"-hide_banner",
-		"-loglevel", "error",
-		"/tmp/output.mkv",
+	tests := []struct {
+		name  string
+		audio bool
+		want  []string
+	}{
+		{
+			name:  "with audio",
+			audio: true,
+			want: []string{
+				"-y",
+				"-ss", "00:00:01",
+				"-to", "00:00:05",
+				"-i", "/videos/input.mkv",
+				"-map", "0:v:0",
+				"-map", "0:a:0",
+				"-sn",
+				"-dn",
+				"-map_metadata", "-1",
+				"-map_chapters", "-1",
+				"-hide_banner",
+				"-loglevel", "error",
+				"/tmp/output.mkv",
+			},
+		},
+		{
+			name:  "without audio",
+			audio: false,
+			want: []string{
+				"-y",
+				"-ss", "00:00:01",
+				"-to", "00:00:05",
+				"-i", "/videos/input.mkv",
+				"-map", "0:v:0",
+				"-sn",
+				"-dn",
+				"-map_metadata", "-1",
+				"-map_chapters", "-1",
+				"-hide_banner",
+				"-loglevel", "error",
+				"/tmp/output.mkv",
+			},
+		},
 	}
-	got := trimArgs("/videos/input.mkv", "/tmp/output.mkv", "00:00:01", "00:00:05")
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("trimArgs() = %q, want %q", got, want)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := trimArgs("/videos/input.mkv", "/tmp/output.mkv", "00:00:01", "00:00:05", tt.audio)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("trimArgs() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestTrimWithoutAudio(t *testing.T) {
+	filesDir := t.TempDir()
+	tempDir := t.TempDir()
+	id := "video-id"
+	sourcePath := filepath.Join(filesDir, id+".mp4")
+	if err := os.WriteFile(sourcePath, []byte("source"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	argsPath := filepath.Join(t.TempDir(), "ffmpeg-args")
+
+	writeFakeCommand(t, "ffprobe", `
+case " $* " in
+  *" -select_streams a:0 "*) exit 0 ;;
+  *) exit 2 ;;
+esac
+`)
+	writeFakeCommand(t, "ffmpeg", `
+last=""
+for arg in "$@"; do
+  printf '%s\n' "$arg" >> "$FAKE_FFMPEG_ARGS"
+  last="$arg"
+done
+printf trimmed > "$last"
+`)
+	t.Setenv("FAKE_FFMPEG_ARGS", argsPath)
+
+	ctx := config.WithConfig(context.Background(), &config.Config{
+		FilesDir: filesDir,
+		TempDir:  tempDir,
+	})
+	video := &Video{ID: id, File: File{Name: filepath.Base(sourcePath), Path: sourcePath}}
+	if err := video.Trim(ctx, "00:00:01", "00:00:05"); err != nil {
+		t.Fatalf("Trim() error = %v", err)
+	}
+
+	got, err := os.ReadFile(sourcePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "trimmed" {
+		t.Errorf("video = %q, want %q", got, "trimmed")
+	}
+	args, err := os.ReadFile(argsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(args), "0:a:0") {
+		t.Errorf("ffmpeg args map audio for a video without audio: %q", args)
+	}
+}
+
+func TestTrimRejectsOutputWithoutAudio(t *testing.T) {
+	filesDir := t.TempDir()
+	tempDir := t.TempDir()
+	id := "video-id"
+	sourcePath := filepath.Join(filesDir, id+".mp4")
+	if err := os.WriteFile(sourcePath, []byte("source"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	writeFakeCommand(t, "ffprobe", `
+last=""
+for arg in "$@"; do
+  last="$arg"
+done
+case " $* " in
+  *" -select_streams a:0 "*)
+    if [ "$last" = "$FAKE_SOURCE_PATH" ]; then
+      printf 'aac\n'
+    fi
+    ;;
+  *) exit 2 ;;
+esac
+`)
+	writeFakeCommand(t, "ffmpeg", `
+last=""
+for arg in "$@"; do
+  last="$arg"
+done
+printf trimmed > "$last"
+`)
+	t.Setenv("FAKE_SOURCE_PATH", sourcePath)
+
+	ctx := config.WithConfig(context.Background(), &config.Config{
+		FilesDir: filesDir,
+		TempDir:  tempDir,
+	})
+	video := &Video{ID: id, File: File{Name: filepath.Base(sourcePath), Path: sourcePath}}
+	err := video.Trim(ctx, "00:00:01", "00:00:05")
+	if err == nil || !strings.Contains(err.Error(), "trimmed video must contain audio") {
+		t.Fatalf("Trim() error = %v, want output audio error", err)
+	}
+
+	got, err := os.ReadFile(sourcePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "source" {
+		t.Errorf("video = %q, want %q", got, "source")
 	}
 }
 
