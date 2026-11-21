@@ -37,10 +37,22 @@ func (v *Video) Compress(ctx context.Context, factor float64) error {
 		return fmt.Errorf("could not inspect audio codec: %w", err)
 	}
 
+	// Copying video keeps the source's frame layout, so only copy when it starts with a keyframe
+	keyframeStart := true
+	if videoCodec == "h264" && factor == 1 {
+		keyframeStart, err = startsWithKeyframe(ctx, v.Path)
+		if err != nil {
+			return fmt.Errorf("could not inspect first video frame: %w", err)
+		}
+		if !keyframeStart {
+			log.InfoContext(ctx, "video does not start with a keyframe, transcoding")
+		}
+	}
+
 	tempPath, finalName, finalPath := compressionOutputPaths(cfg.TempDir, cfg.FilesDir, v.ID)
 	defer func() { _ = os.Remove(tempPath) }()
 
-	cmd := exec.CommandContext(ctx, "ffmpeg", compressionArgs(v.Path, tempPath, videoCodec, audioCodec, factor, cfg.Quicksync, v.originalURL)...)
+	cmd := exec.CommandContext(ctx, "ffmpeg", compressionArgs(v.Path, tempPath, videoCodec, keyframeStart, audioCodec, factor, cfg.Quicksync, v.originalURL)...)
 	out, err := cmd.Output()
 	if err != nil {
 		return fmt.Errorf("could not compress video: %w", err)
@@ -71,10 +83,10 @@ func (v *Video) Compress(ctx context.Context, factor float64) error {
 	return nil
 }
 
-func compressionArgs(input string, output string, videoCodec string, audioCodec string, factor float64, quicksync bool, originalURL string) []string {
+func compressionArgs(input string, output string, videoCodec string, keyframeStart bool, audioCodec string, factor float64, quicksync bool, originalURL string) []string {
 	adjustSpeed := factor != 1
 	audio := audioCodec != ""
-	transcodeVideo := adjustSpeed || videoCodec != "h264"
+	transcodeVideo := adjustSpeed || videoCodec != "h264" || !keyframeStart
 	transcodeAudio := adjustSpeed || audioCodec != "aac"
 	args := []string{"-y"}
 	if !adjustSpeed && transcodeVideo && quicksync {

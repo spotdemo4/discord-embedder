@@ -31,6 +31,29 @@ func TestParseCodecProbe(t *testing.T) {
 	}
 }
 
+func TestParseKeyframeProbe(t *testing.T) {
+	tests := []struct {
+		name   string
+		output string
+		want   bool
+	}{
+		{name: "keyframe", output: "1\n0\n0\n", want: true},
+		{name: "keyframe with side data column", output: "1,\n0\n", want: true},
+		{name: "keyframe with carriage return", output: "1\r\n0\r\n", want: true},
+		{name: "hidden keyframe", output: "0\n0\n1\n", want: false},
+		{name: "no frames", output: "", want: false},
+		{name: "unexpected output", output: "h264\n", want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := parseKeyframeProbe(tt.output); got != tt.want {
+				t.Errorf("parseKeyframeProbe() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestCodecProbesStreams(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "video with spaces.mp4")
 	writeFakeCommand(t, "ffprobe", `

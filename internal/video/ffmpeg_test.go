@@ -13,12 +13,13 @@ import (
 
 func TestCompressionArgs(t *testing.T) {
 	tests := []struct {
-		name       string
-		videoCodec string
-		audioCodec string
-		factor     float64
-		quicksync  bool
-		want       []string
+		name            string
+		videoCodec      string
+		noKeyframeStart bool
+		audioCodec      string
+		factor          float64
+		quicksync       bool
+		want            []string
 	}{
 		{
 			name:       "copy h264 and aac",
@@ -243,6 +244,59 @@ func TestCompressionArgs(t *testing.T) {
 			},
 		},
 		{
+			name:            "transcode h264 without a starting keyframe and copy aac",
+			videoCodec:      "h264",
+			noKeyframeStart: true,
+			audioCodec:      "aac",
+			factor:          1,
+			want: []string{
+				"-y",
+				"-i", "/videos/input.webm",
+				"-map", "0:v:0",
+				"-map", "0:a:0",
+				"-sn",
+				"-dn",
+				"-map_metadata", "-1",
+				"-map_chapters", "-1",
+				"-c:v:0", "libx264",
+				"-crf:v:0", "23",
+				"-c:a:0", "copy",
+				"-metadata", "original_url=https://example.com/video",
+				"-movflags", "+faststart+use_metadata_tags",
+				"-hide_banner",
+				"-loglevel", "error",
+				"/tmp/output.mp4",
+			},
+		},
+		{
+			name:            "transcode h264 without a starting keyframe with quicksync",
+			videoCodec:      "h264",
+			noKeyframeStart: true,
+			audioCodec:      "aac",
+			factor:          1,
+			quicksync:       true,
+			want: []string{
+				"-y",
+				"-hwaccel", "qsv",
+				"-hwaccel_output_format", "qsv",
+				"-i", "/videos/input.webm",
+				"-map", "0:v:0",
+				"-map", "0:a:0",
+				"-sn",
+				"-dn",
+				"-map_metadata", "-1",
+				"-map_chapters", "-1",
+				"-c:v:0", "h264_qsv",
+				"-global_quality:v:0", "23",
+				"-c:a:0", "copy",
+				"-metadata", "original_url=https://example.com/video",
+				"-movflags", "+faststart+use_metadata_tags",
+				"-hide_banner",
+				"-loglevel", "error",
+				"/tmp/output.mp4",
+			},
+		},
+		{
 			name:       "speed up without audio",
 			videoCodec: "vp9",
 			factor:     2,
@@ -272,6 +326,7 @@ func TestCompressionArgs(t *testing.T) {
 				"/videos/input.webm",
 				"/tmp/output.mp4",
 				tt.videoCodec,
+				!tt.noKeyframeStart,
 				tt.audioCodec,
 				tt.factor,
 				tt.quicksync,
@@ -285,7 +340,7 @@ func TestCompressionArgs(t *testing.T) {
 }
 
 func TestCompressionArgsWithoutOriginalURL(t *testing.T) {
-	args := compressionArgs("/videos/input.webm", "/tmp/output.mp4", "h264", "aac", 1, false, "")
+	args := compressionArgs("/videos/input.webm", "/tmp/output.mp4", "h264", true, "aac", 1, false, "")
 	for _, arg := range args {
 		if arg == "-metadata" {
 			t.Fatal("compressionArgs() added metadata for an empty original URL")
@@ -318,6 +373,7 @@ func TestCompressCopiesCompatibleStreams(t *testing.T) {
 
 	writeFakeCommand(t, "ffprobe", `
 case " $* " in
+  *" -show_entries frame=key_frame "*) printf '1,\n' ;;
   *" -select_streams v:0 "*) printf 'h264\n' ;;
   *" -select_streams a:0 "*) printf 'aac\n' ;;
   *) exit 2 ;;
@@ -379,6 +435,56 @@ printf encoded > "$last"
 	}
 	if !strings.Contains(command, "-movflags\n+faststart+use_metadata_tags\n") {
 		t.Errorf("ffmpeg args do not enable MP4 metadata tags: %q", command)
+	}
+}
+
+func TestCompressTranscodesVideoWithoutStartingKeyframe(t *testing.T) {
+	filesDir := t.TempDir()
+	tempDir := t.TempDir()
+	id := "video-id"
+	sourcePath := filepath.Join(filesDir, id+".mp4")
+	if err := os.WriteFile(sourcePath, []byte("source"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	argsPath := filepath.Join(t.TempDir(), "ffmpeg-args")
+
+	writeFakeCommand(t, "ffprobe", `
+case " $* " in
+  *" -show_entries frame=key_frame "*) printf '0\n0\n0\n' ;;
+  *" -select_streams v:0 "*) printf 'h264\n' ;;
+  *" -select_streams a:0 "*) printf 'aac\n' ;;
+  *) exit 2 ;;
+esac
+`)
+	writeFakeCommand(t, "ffmpeg", `
+last=""
+for arg in "$@"; do
+  printf '%s\n' "$arg" >> "$FAKE_FFMPEG_ARGS"
+  last="$arg"
+done
+printf encoded > "$last"
+`)
+	t.Setenv("FAKE_FFMPEG_ARGS", argsPath)
+
+	ctx := config.WithConfig(context.Background(), &config.Config{
+		FilesDir: filesDir,
+		TempDir:  tempDir,
+	})
+	video := &Video{ID: id, File: File{Name: filepath.Base(sourcePath), Path: sourcePath}}
+	if err := video.Compress(ctx, 1); err != nil {
+		t.Fatalf("Compress() error = %v", err)
+	}
+
+	args, err := os.ReadFile(argsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := string(args)
+	if !strings.Contains(command, "-c:v:0\nlibx264\n") {
+		t.Errorf("ffmpeg args do not transcode video: %q", command)
+	}
+	if !strings.Contains(command, "-c:a:0\ncopy\n") {
+		t.Errorf("ffmpeg args do not copy audio: %q", command)
 	}
 }
 
@@ -547,6 +653,7 @@ for arg in "$@"; do
   last="$arg"
 done
 case " $* " in
+  *" -show_entries frame=key_frame "*) printf '1,\n' ;;
   *" -select_streams v:0 "*) printf 'h264\n' ;;
   *" -select_streams a:0 "*)
     if [ "$last" != "$FAKE_ENCODE_PATH" ]; then

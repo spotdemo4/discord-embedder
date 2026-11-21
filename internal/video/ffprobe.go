@@ -34,6 +34,39 @@ func parseCodecProbe(output string) string {
 	return strings.TrimSpace(output)
 }
 
+// startsWithKeyframe reports whether the first displayed frame of the first video stream is a keyframe.
+//
+// Some sources, such as X, place the keyframe just before the start of the MP4 edit list, so the first
+// displayed frame depends on a hidden keyframe. Browsers decode it anyway, but stricter players like
+// Discord's skip it and show a frozen picture until the next keyframe while the audio keeps playing.
+func startsWithKeyframe(ctx context.Context, path string) (bool, error) {
+	cmd := exec.CommandContext(ctx,
+		"ffprobe",
+		"-v", "error",
+		"-select_streams", "v:0",
+		// Enough packets to get the first frame out of the decoder despite frame reordering
+		"-read_intervals", "%+#16",
+		"-show_entries", "frame=key_frame",
+		"-of", "csv=p=0",
+		path,
+	)
+
+	out, err := cmd.Output()
+	if err != nil {
+		return false, err
+	}
+
+	return parseKeyframeProbe(string(out)), nil
+}
+
+// parseKeyframeProbe reports whether the first frame in ffprobe's key_frame CSV output is a keyframe.
+func parseKeyframeProbe(output string) bool {
+	line, _, _ := strings.Cut(strings.TrimSpace(output), "\n")
+	keyFrame, _, _ := strings.Cut(line, ",")
+
+	return strings.TrimSpace(keyFrame) == "1"
+}
+
 // OriginalURL returns the sanitized URL used to download the video.
 func (v *Video) OriginalURL(ctx context.Context) (string, error) {
 	if v.originalURL != "" {
