@@ -3,8 +3,10 @@
 /docker-compose*
 
 # agents
-.agents/
-.claude/
+/.agents/*
+!/.agents/skills/
+/.claude/*
+!/.claude/skills
 .codex/
 
 # nix

@@ -1,6 +1,6 @@
 ## Summary
 
-<!-- What changed and why. Link related issues (e.g. "closes #123"). -->
+<!-- What changed and why. Link related issues: "Closes #123" only for an issue this PR should close, "Refs #123" for one that stays open. -->
 
 ## Notes
 

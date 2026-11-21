@@ -5,6 +5,8 @@ actions:
       - any-glob-to-any-file:
           - .github/workflows/**
           - .forgejo/workflows/**
+          - .gitea/workflows/**
+          - .tangled/workflows/**
 
 go:
   - changed-files:
